@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { BagIcon, CloseIcon, HeartIcon, MenuIcon, UserIcon } from "@/components/ui/icons";
 import { useCart } from "@/hooks/use-cart";
+import { ProfileDropdown } from "@/components/profile/profile-dropdown";
 
 import { Logo } from "./logo";
 
@@ -47,7 +48,7 @@ export function Header() {
           {navigation.map((item) => <Link className="transition-opacity hover:opacity-70" href={item.href} key={item.label}>{item.label}</Link>)}
         </nav>
         <div className="flex items-center gap-4 text-white sm:gap-5">
-          <Link aria-label="Your account" className="hidden transition-opacity hover:opacity-70 sm:block" href="/login"><UserIcon /></Link>
+          <ProfileDropdown className="hidden sm:block" />
           <Link aria-label="Your wishlist" className="hidden transition-opacity hover:opacity-70 sm:block" href="/wishlist"><HeartIcon /></Link>
           <Link aria-label={`Shopping bag, ${cartItemCount} ${cartItemCount === 1 ? "item" : "items"}`} className="relative transition-opacity hover:opacity-70" href="/cart"><BagIcon /><span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-purple px-1 text-[9px] font-bold text-white">{cartItemCount}</span></Link>
           <button aria-expanded={isMobileMenuOpen} aria-label="Open menu" className="flex lg:hidden" onClick={() => setIsMobileMenuOpen(true)} type="button"><MenuIcon /></button>
@@ -63,7 +64,7 @@ export function Header() {
         <nav className="mt-8 flex flex-col" aria-label="Mobile navigation links">
           <Link className="border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href="/" onClick={closeMobileMenu}>Home</Link>
           {navigation.map((item) => <Link className="border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href={item.href} key={item.label} onClick={closeMobileMenu}>{item.label}</Link>)}
-          <Link className="flex items-center gap-3 border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href="/login" onClick={closeMobileMenu}><UserIcon /> Account</Link>
+          <Link className="flex items-center gap-3 border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href="/profile" onClick={closeMobileMenu}><UserIcon /> Profile</Link>
           <Link className="flex items-center gap-3 border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href="/wishlist" onClick={closeMobileMenu}><HeartIcon /> Wishlist</Link>
           <Link className="flex items-center gap-3 border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href="/cart" onClick={closeMobileMenu}><BagIcon /> Shopping bag <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-brand-purple">{cartItemCount}</span></Link>
         </nav>

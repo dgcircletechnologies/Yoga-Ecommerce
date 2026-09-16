@@ -64,6 +64,10 @@ export function FolderIcon({ className = "" }: IconProps) {
   return <svg aria-hidden="true" className={className} fill="none" height="20" viewBox="0 0 24 24" width="20"><path d="M4 6.5a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.5" /></svg>;
 }
 
+export function PackageIcon({ className = "" }: IconProps) {
+  return <svg aria-hidden="true" className={className} fill="none" height="20" viewBox="0 0 24 24" width="20"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.5" /><path d="m4.5 7.5 7.5 4 7.5-4M12 12v9" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.5" /></svg>;
+}
+
 export function SearchIcon({ className = "" }: IconProps) {
   return <svg aria-hidden="true" className={className} fill="none" height="19" viewBox="0 0 24 24" width="19"><circle cx="10.75" cy="10.75" r="5.75" stroke="currentColor" strokeWidth="1.5" /><path d="m15 15 4.5 4.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" /></svg>;
 }

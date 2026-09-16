@@ -6,9 +6,9 @@ import { notFound } from "next/navigation";
 import { TestimonialsSection } from "@/components/features/home/testimonials-section";
 import { ProductDetailsTabs } from "@/components/features/products/product-details-tabs";
 import { AddToCartButton } from "@/components/features/products/add-to-cart-button";
+import { BuyNowButton } from "@/components/features/products/buy-now-button";
 import { WishlistButton } from "@/components/wishlist/wishlist-button";
 import { PageHero } from "@/components/layout/page-hero";
-import { ArrowIcon } from "@/components/ui/icons";
 import { Container } from "@/components/ui/container";
 import { products } from "@/data/mock/products";
 import { testimonials } from "@/data/mock/testimonials";
@@ -64,7 +64,7 @@ function ProductDetails({ product }: { product: Product }) {
               <p className="pt-5">{product.stock ? <span className="text-green-500">In Stock</span> : <span className="text-red-500">Out of Stock</span>}</p>
               <div className="mt-5 grid gap-3">
                 <AddToCartButton product={product} />
-                <button className="inline-flex min-h-12 w-full items-center justify-center gap-3 bg-brand-purple px-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-brand-dark" type="button">Buy Now <ArrowIcon /></button>
+                <BuyNowButton product={product} />
               </div>
             </div>
             <div className="mt-12"><h2 className="text-2xl">Tags</h2><div className="mt-5 flex flex-wrap gap-3"><Link className="text-brand-purple transition-colors hover:text-brand-dark" href="/products">{product.category}</Link><Link className="text-brand-purple transition-colors hover:text-brand-dark" href="/products">Yoga essentials</Link><Link className="text-brand-purple transition-colors hover:text-brand-dark" href="/products">Mindful living</Link></div></div>
