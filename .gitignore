@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+
+# NestJS
+backend/dist/
+backend/coverage/
+
+# Docker and local development
+*.pid
+*.log
+docker-data/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*.pdf
+*.zip

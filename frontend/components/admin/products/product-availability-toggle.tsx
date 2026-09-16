@@ -1,0 +1,3 @@
+import type { ProductAvailability } from "@/types/admin-product";
+
+export function ProductAvailabilityToggle({ value, onChange }: { value: ProductAvailability; onChange: () => void }) { const active = value === "Available"; return <button aria-label={active ? "Mark product unavailable" : "Mark product available"} aria-pressed={active} className={`relative h-6 w-11 rounded-full transition-colors ${active ? "bg-brand-purple" : "bg-brand-gray/50"}`} onClick={onChange} type="button"><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${active ? "left-6" : "left-1"}`} /></button>; }
