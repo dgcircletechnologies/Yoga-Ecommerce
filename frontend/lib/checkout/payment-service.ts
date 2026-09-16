@@ -1,6 +1,8 @@
 export type PaymentRequest = {
-  amount: number;
+  baseAmountUSD: number;
+  displayAmount: number;
   currency: string;
+  exchangeRate: number;
   customerEmail: string;
 };
 
@@ -8,6 +10,6 @@ export type PaymentRequest = {
 export async function beginPayment(request: PaymentRequest) {
   return {
     provider: "placeholder",
-    redirectUrl: `/checkout/payment?amount=${request.amount.toFixed(2)}&currency=${request.currency}`,
+    redirectUrl: `/checkout/payment?amount=${request.displayAmount.toFixed(2)}&currency=${request.currency}`,
   };
 }

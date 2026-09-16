@@ -7,6 +7,7 @@ import { TestimonialsSection } from "@/components/features/home/testimonials-sec
 import { ProductDetailsTabs } from "@/components/features/products/product-details-tabs";
 import { AddToCartButton } from "@/components/features/products/add-to-cart-button";
 import { BuyNowButton } from "@/components/features/products/buy-now-button";
+import { ProductPrice } from "@/components/features/products/product-price";
 import { WishlistButton } from "@/components/wishlist/wishlist-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { Container } from "@/components/ui/container";
@@ -57,7 +58,7 @@ function ProductDetails({ product }: { product: Product }) {
 
           <aside className="order-2 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:pt-16">
             <h2 className="text-2xl">Information</h2>
-            <span className="mt-4 block text-3xl font-semibold text-brand-dark">{product.price}</span>
+            <ProductPrice className="mt-4 block text-3xl font-semibold text-brand-dark" price={product.price} />
             <div className="mt-6 p-5">
               <h2 className="text-2xl">{product.name} </h2>
               <InfoRow label="Category" value={product.category} />

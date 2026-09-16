@@ -5,6 +5,7 @@ import type { Product } from "@/types/product";
 
 import { ArrowIcon } from "../../ui/icons";
 import { WishlistButton } from "@/components/wishlist/wishlist-button";
+import { ProductPrice } from "./product-price";
 
 type ProductCardProps = { product: Product };
 
@@ -19,7 +20,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </Link>
       <WishlistButton className="absolute right-4 top-4 h-10 w-10 bg-white shadow-sm hover:bg-brand-purple hover:text-white" product={product} />
       </div>
-      <div className="bg-gradient-to-b from-brand-purple/20 to-transparent px-5 py-8"><div className="flex items-center justify-between gap-4 text-brand-dark"><span className="text-sm">{product.category}</span><span className="text-xl font-semibold">{product.price}</span></div><Link className="mt-5 block" href={`/products/${product.name.toLowerCase().replaceAll(" ", "-")}`}><h3 className="text-xl transition-colors group-hover:text-brand-purple">{product.name}</h3></Link><p className="mt-4 text-sm leading-6 text-brand-gray">{product.description}</p></div>
+      <div className="bg-gradient-to-b from-brand-purple/20 to-transparent px-5 py-8"><div className="flex items-center justify-between gap-4 text-brand-dark"><span className="text-sm">{product.category}</span><ProductPrice className="text-xl font-semibold" price={product.price} /></div><Link className="mt-5 block" href={`/products/${product.name.toLowerCase().replaceAll(" ", "-")}`}><h3 className="text-xl transition-colors group-hover:text-brand-purple">{product.name}</h3></Link><p className="mt-4 text-sm leading-6 text-brand-gray">{product.description}</p></div>
     </article>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { BagIcon, CloseIcon, HeartIcon, MenuIcon, UserIcon } from "@/components/ui/icons";
 import { useCart } from "@/hooks/use-cart";
 import { ProfileDropdown } from "@/components/profile/profile-dropdown";
+import { CurrencySelector } from "./currency-selector";
 
 import { Logo } from "./logo";
 
@@ -48,6 +49,7 @@ export function Header() {
           {navigation.map((item) => <Link className="transition-opacity hover:opacity-70" href={item.href} key={item.label}>{item.label}</Link>)}
         </nav>
         <div className="flex items-center gap-4 text-white sm:gap-5">
+          <CurrencySelector />
           <ProfileDropdown className="hidden sm:block" />
           <Link aria-label="Your wishlist" className="hidden transition-opacity hover:opacity-70 sm:block" href="/wishlist"><HeartIcon /></Link>
           <Link aria-label={`Shopping bag, ${cartItemCount} ${cartItemCount === 1 ? "item" : "items"}`} className="relative transition-opacity hover:opacity-70" href="/cart"><BagIcon /><span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-purple px-1 text-[9px] font-bold text-white">{cartItemCount}</span></Link>
@@ -62,6 +64,7 @@ export function Header() {
           <button aria-label="Close menu" className="transition-colors hover:text-brand-lavender" onClick={closeMobileMenu} type="button"><CloseIcon /></button>
         </div>
         <nav className="mt-8 flex flex-col" aria-label="Mobile navigation links">
+          <CurrencySelector mobile />
           <Link className="border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href="/" onClick={closeMobileMenu}>Home</Link>
           {navigation.map((item) => <Link className="border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href={item.href} key={item.label} onClick={closeMobileMenu}>{item.label}</Link>)}
           <Link className="flex items-center gap-3 border-b border-white/20 py-4 text-base uppercase tracking-[0.12em] transition-colors hover:text-brand-lavender" href="/profile" onClick={closeMobileMenu}><UserIcon /> Profile</Link>
