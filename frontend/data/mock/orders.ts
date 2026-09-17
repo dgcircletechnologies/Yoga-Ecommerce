@@ -7,5 +7,5 @@ const payments: PaymentStatus[] = ["Paid", "Paid", "Paid", "Paid", "Pending", "R
 export const orders: Order[] = names.map((name, index) => {
   const status = statuses[index % statuses.length];
   const date = new Date(Date.UTC(2026, 0, 8 + index * 3)).toISOString().slice(0, 10);
-  return { id: `ORD-${String(1001 + index)}`, customer: { name, email: `${name.toLowerCase().replaceAll(" ", ".")}@example.com` }, items: [{ name: index % 2 ? "Stillness Meditation Cushion" : "Sage Align Yoga Mat", quantity: (index % 3) + 1 }], totalAmount: 42 + (index % 5) * 16 + index * 3, paymentStatus: payments[index % payments.length], status, createdAt: date, deliveredAt: status === "Delivered" ? new Date(Date.UTC(2026, 0, 11 + index * 3)).toISOString().slice(0, 10) : undefined };
+  return { id: `ORD-${String(1001 + index)}`, type: "Product" as const, customer: { name, email: `${name.toLowerCase().replaceAll(" ", ".")}@example.com` }, items: [{ name: index % 2 ? "Stillness Meditation Cushion" : "Sage Align Yoga Mat", quantity: (index % 3) + 1 }], totalAmount: 42 + (index % 5) * 16 + index * 3, paymentStatus: payments[index % payments.length], status, createdAt: date, deliveredAt: status === "Delivered" ? new Date(Date.UTC(2026, 0, 11 + index * 3)).toISOString().slice(0, 10) : undefined };
 });

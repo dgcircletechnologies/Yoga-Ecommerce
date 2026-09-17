@@ -43,7 +43,7 @@ function ReviewsContent() {
         <Review name="Jeena Davis" image="/lotuslab/author1.jpg">Beautifully made and exactly what I needed for my daily practice.</Review>
         <Review name="David Cooper" image="/lotuslab/author3.jpg">Thoughtful quality, quick delivery, and a lovely addition to my routine.</Review>
       </div>
-      <h2 className="mt-12">Write Review</h2>
+      {/* <h2 className="mt-12">Write Review</h2>
       <form action="#reviews" className="mt-6 space-y-5" method="get">
         <div className="grid gap-5 sm:grid-cols-2">
           <input aria-label="Name" className="w-full border-0 bg-brand-light-gray px-5 py-5 text-brand-dark outline-none transition-colors placeholder:font-serif placeholder:text-brand-dark hover:bg-brand-lavender focus:bg-brand-lavender" name="name" placeholder="Name" type="text" />
@@ -53,7 +53,7 @@ function ReviewsContent() {
         <p className="text-sm text-brand-dark">Rating: <span className="ml-2 tracking-widest text-brand-purple">★★★★★</span></p>
         <textarea aria-label="Review summary" className="min-h-[150px] w-full resize-y border-0 bg-brand-light-gray px-5 py-5 text-brand-dark outline-none transition-colors placeholder:font-serif placeholder:text-brand-dark hover:bg-brand-lavender focus:bg-brand-lavender" name="review" placeholder="Review Summary" />
         <button className="min-h-12 bg-brand-purple px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-brand-dark" type="submit">Submit Review</button>
-      </form>
+      </form> */}
     </div>
   );
 }

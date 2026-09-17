@@ -6,6 +6,8 @@ import { readWishlist, writeWishlist, WISHLIST_UPDATED_EVENT } from "@/lib/wishl
 import type { Product } from "@/types/product";
 import type { WishlistItem } from "@/types/wishlist";
 
+const EMPTY_WISHLIST: WishlistItem[] = [];
+
 export function productId(product: Pick<Product, "name">) {
   return product.name.toLowerCase().replaceAll(" ", "-");
 }
@@ -24,7 +26,7 @@ export function useWishlist() {
       window.removeEventListener("storage", syncWishlist);
     };
   }, []);
-  const wishlistItems = useSyncExternalStore(subscribe, readWishlist, () => []);
+  const wishlistItems = useSyncExternalStore(subscribe, readWishlist, () => EMPTY_WISHLIST);
 
   const isInWishlist = useCallback((id: string) => wishlistItems.some((item) => item.id === id), [wishlistItems]);
   const addToWishlist = useCallback((product: Product) => {

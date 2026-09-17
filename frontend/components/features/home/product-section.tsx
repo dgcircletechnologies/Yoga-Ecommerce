@@ -6,7 +6,7 @@ import { Container } from "@/components/ui/container";
 
 export function ProductSection() {
   return (
-    <section className="bg-gradient-to-b from-brand-purple/20 to-transparent py-20 sm:py-24 lg:py-28">
+    <section className="bg-white py-20 sm:py-24 lg:py-28">
       <Container>
         <div className="mb-10 text-center sm:mb-14"><span className="mb-4 inline-block text-sm uppercase tracking-[0.14em] text-brand-purple">Our products</span><h2>Everyday essentials</h2></div>
         <div className="grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">{products.slice(0, 4).map((product) => <ProductCard key={product.name} product={product} />)}</div>

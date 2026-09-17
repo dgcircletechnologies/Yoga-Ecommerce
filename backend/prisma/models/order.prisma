@@ -1,0 +1,76 @@
+model Order {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  status OrderStatus @default(PENDING)
+
+  // Order totals
+  subtotal Decimal @db.Decimal(10, 2)
+  discount Decimal @default(0) @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+
+  // Customer/shipping address snapshot
+  name       String  @db.VarChar(100)
+  email      String  @db.VarChar(255)
+  phone      String? @db.VarChar(20)
+  address    String
+  city       String
+  state      String
+  country    String
+  postalCode String
+
+  items   OrderItem[]
+  payment Payment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id String @id @default(uuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // One of these will be set depending on item type
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  type OrderItemType
+
+  // Snapshot of purchased item
+  name     String  @db.VarChar(150)
+  price    Decimal @db.Decimal(10, 2)
+  quantity Int     @default(1)
+  discount Decimal @default(0) @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([serviceId])
+  @@index([type])
+}
+
+enum OrderItemType {
+  PRODUCT
+  SERVICE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}

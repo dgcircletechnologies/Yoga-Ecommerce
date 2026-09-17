@@ -45,9 +45,9 @@ export default function ContactPage() {
             </form>
           </section>
         </Container>
-        <div className="h-[350px] w-full">
+        {/* <div className="h-[350px] w-full">
           <iframe className="h-full w-full border-0 grayscale" loading="lazy" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2918.8840785320544!2d-82.49493468465671!3d42.980715479150156!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88259e93ea837f03%3A0x9eaf24e841d574ed!2zNDIzOSBMYXBlZXIgUmQsIFBvcnQgSHVyb24sIE1JIDQ4MDYwLCDQodCo0JA!5e0!3m2!1sru!2sua!4v1640107647193!5m2!1sru!2sua" title="Sattva location map" />
-        </div>
+        </div> */}
       </main>
     </>
   );

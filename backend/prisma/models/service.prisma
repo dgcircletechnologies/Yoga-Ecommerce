@@ -1,0 +1,32 @@
+model Service {
+  id          String  @id @default(uuid())
+  name        String  @db.VarChar(150)
+  slug        String  @unique @db.VarChar(120)
+  description String?
+
+  // Price for the complete service/package
+  price Decimal @db.Decimal(10, 2)
+
+  // Number of sessions included
+  sessions Int
+
+  // Controls whether the service is available for purchase
+  status ServiceStatus @default(ACTIVE)
+
+  // Service image URL
+  images String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([price])
+}
+
+enum ServiceStatus {
+  ACTIVE
+  INACTIVE
+}

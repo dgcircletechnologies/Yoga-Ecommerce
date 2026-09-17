@@ -5,6 +5,10 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { readCart, writeCart, CART_UPDATED_EVENT } from "@/lib/cart/cart-storage";
 import type { CartItem } from "@/types/cart";
 
+// useSyncExternalStore requires snapshots to keep the same reference when
+// the underlying store has not changed, including during server rendering.
+const EMPTY_CART: CartItem[] = [];
+
 export function productToCartItem(product: {
   name: string;
   category: string;
@@ -34,7 +38,7 @@ export function useCart() {
       window.removeEventListener("storage", syncCart);
     };
   }, []);
-  const cartItems = useSyncExternalStore(subscribe, readCart, () => []);
+  const cartItems = useSyncExternalStore(subscribe, readCart, () => EMPTY_CART);
 
   const updateCart = useCallback((nextItems: CartItem[]) => {
     writeCart(nextItems);

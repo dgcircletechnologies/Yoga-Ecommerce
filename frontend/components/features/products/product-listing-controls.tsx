@@ -13,7 +13,7 @@ export function ProductListingControls({ categories }: ProductListingControlsPro
     <>
       <div className="mb-10 flex items-center justify-between border-b border-black/10 py-4 sm:mb-14">
         <button aria-controls="product-filter" aria-expanded={isFilterOpen} className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-dark transition-colors hover:text-brand-purple" onClick={() => setIsFilterOpen(true)} type="button"><FilterIcon /> Filter</button>
-        <label className="relative inline-flex cursor-pointer items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-dark transition-colors hover:text-brand-purple"><SortIcon /><span>Sort by</span><select aria-label="Sort products" className="absolute inset-0 h-full w-full cursor-pointer opacity-0"><option>Featured</option><option>Price: Low to high</option><option>Price: High to low</option><option>Name</option></select></label>
+        <label className="relative inline-flex cursor-pointer items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-dark transition-colors hover:text-brand-purple"><SortIcon /><span>Sort by</span><select aria-label="Sort products" className="absolute px-2 py-1 text-left inset-0 h-full w-full cursor-pointer opacity-0"><option className="mx-2">Featured</option><option className="mx-2">Price: Low to high</option><option className="mx-2">Price: High to low</option><option className="mx-2">Name</option></select></label>
       </div>
 
       <div aria-hidden={!isFilterOpen} className={`fixed inset-0 z-30 bg-black/40 transition-opacity duration-500 ${isFilterOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} onClick={() => setIsFilterOpen(false)} />

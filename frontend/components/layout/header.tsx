@@ -12,6 +12,7 @@ import { Logo } from "./logo";
 
 const navigation = [
   { label: "Shop", href: "/products" },
+  { label: "Services", href: "/services" },
   { label: "Categories", href: "/categories" },
   { label: "Our story", href: "/about" },
 ];
@@ -41,7 +42,7 @@ export function Header() {
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <header className={`fixed inset-x-0 top-0 z-20 border-b text-white transition-colors duration-300 ${isScrolled ? "border-brand-purple bg-brand-purple" : "border-white/20 bg-transparent"}`}>
+    <header className={`fixed inset-x-0 top-0 z-20 border-b text-white transition-colors duration-300 ${isScrolled ? "border-brand-purple bg-brand-purple" : "border-white/20 bg-brand-dark/35 backdrop-blur-[2px]"}`}>
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
         <Logo inverted />
         <nav aria-label="Main navigation" className="hidden items-center gap-8 text-[11px] font-semibold uppercase tracking-[0.18em] lg:flex">
