@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { useAuth } from "@/hooks/use-auth";
 
 type LoginValues = {
   email: string;
@@ -16,6 +18,8 @@ type LoginErrors = Partial<Record<keyof LoginValues, string>>;
 const initialValues: LoginValues = { email: "", password: "" };
 
 export function LoginForm() {
+  const router = useRouter();
+  const { login } = useAuth();
   const [values, setValues] = useState<LoginValues>(initialValues);
   const [errors, setErrors] = useState<LoginErrors>({});
   const [showPassword, setShowPassword] = useState(false);
@@ -44,12 +48,6 @@ export function LoginForm() {
     return nextErrors;
   }
 
-  async function submitLogin(valuesToSubmit: LoginValues) {
-    // Replace this boundary with the authentication request when the API is connected.
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    return { ok: false, message: `Authentication is not connected yet for ${valuesToSubmit.email}. Contact the administrator.` };
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitError("");
@@ -59,9 +57,13 @@ export function LoginForm() {
     if (Object.keys(nextErrors).length > 0) return;
 
     setIsSubmitting(true);
-    const result = await submitLogin(values);
-    if (!result.ok) setSubmitError(result.message);
-    setIsSubmitting(false);
+    try {
+      const user = await login(values.email, values.password);
+      router.replace(user.role === "ADMIN" ? "/admin" : "/");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to log in. Please try again.");
+      setIsSubmitting(false);
+    }
   }
 
   const inputClass = "mt-2 h-12 w-full rounded-md border bg-white px-4 text-sm text-brand-dark outline-none transition-colors placeholder:text-brand-gray focus:border-brand-purple";

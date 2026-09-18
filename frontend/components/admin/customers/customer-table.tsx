@@ -4,7 +4,16 @@ import type { Customer } from "@/types/customer";
 type CustomerTableProps = { customers: Customer[]; onDelete: (customer: Customer) => void; onEdit: (customer: Customer) => void };
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+  // The API returns an ISO timestamp, while older mock data used YYYY-MM-DD.
+  // Support both formats without appending a second time component.
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 export function CustomerTable({ customers, onDelete, onEdit }: CustomerTableProps) {

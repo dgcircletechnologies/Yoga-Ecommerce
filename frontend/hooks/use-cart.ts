@@ -10,6 +10,7 @@ import type { CartItem } from "@/types/cart";
 const EMPTY_CART: CartItem[] = [];
 
 export function productToCartItem(product: {
+  id?: string;
   name: string;
   category: string;
   description: string;
@@ -17,7 +18,9 @@ export function productToCartItem(product: {
   image: string;
 }): CartItem {
   return {
-    id: product.name.toLowerCase().replaceAll(" ", "-"),
+    id: product.id ?? product.name.toLowerCase().replaceAll(" ", "-"),
+    referenceId: product.id,
+    type: "PRODUCT",
     name: product.name,
     category: product.category,
     description: product.description,

@@ -13,8 +13,8 @@ export function ProductDetailsTabs({ product }: ProductDetailsTabsProps) {
   return (
     <div className="mt-8 ">
       <div className="flex flex-wrap border-b border-black/10">
-        <button className={`min-w-[140px] flex-1 px-5 py-4 text-sm transition-colors ${activeTab === "details" ? "bg-brand-purple text-white" : "bg-brand-light-gray text-brand-dark hover:text-brand-purple"}`} onClick={() => setActiveTab("details")} type="button">Details</button>
-        <button className={`min-w-[140px] flex-1 px-5 py-4 text-sm transition-colors ${activeTab === "reviews" ? "bg-brand-purple text-white" : "bg-brand-light-gray text-brand-dark hover:text-brand-purple"}`} onClick={() => setActiveTab("reviews")} type="button">Reviews</button>
+        <button className={`min-w-35 flex-1 px-5 py-4 text-sm transition-colors ${activeTab === "details" ? "bg-brand-purple text-white" : "bg-brand-light-gray text-brand-dark hover:text-brand-purple"}`} onClick={() => setActiveTab("details")} type="button">Details</button>
+        <button className={`min-w-35 flex-1 px-5 py-4 text-sm transition-colors ${activeTab === "reviews" ? "bg-brand-purple text-white" : "bg-brand-light-gray text-brand-dark hover:text-brand-purple"}`} onClick={() => setActiveTab("reviews")} type="button">Reviews</button>
       </div>
       <div className="px-5 py-8 sm:px-8">
         {activeTab === "details" ? <DetailsContent product={product} /> : <ReviewsContent />}

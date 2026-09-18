@@ -1,40 +1,21 @@
 "use client";
-
 import { useEffect, useMemo, useState } from "react";
-
+import { getCategories, createCategory, updateCategory, deleteCategory as deleteCategoryRequest } from "@/api/categories.api";
 import { CustomerPagination } from "@/components/admin/customers/customer-pagination";
 import { CustomerSearch } from "@/components/admin/customers/customer-search";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { categories as initialCategories } from "@/data/mock/categories";
 import type { Category } from "@/types/category";
-
 import { CategoryFormModal } from "./category-form-modal";
 import { CategoryTable } from "./category-table";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
-
 const PAGE_SIZE = 10;
-
 export function CategoriesPage() {
-  const [categoryList, setCategoryList] = useState(initialCategories);
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | undefined>();
-  const [deletingCategory, setDeletingCategory] = useState<Category | undefined>();
-  const [feedback, setFeedback] = useState("");
-
+  const [categoryList, setCategoryList] = useState<Category[]>([]); const [query, setQuery] = useState(""); const [debouncedQuery, setDebouncedQuery] = useState(""); const [currentPage, setCurrentPage] = useState(1); const [formOpen, setFormOpen] = useState(false); const [editingCategory, setEditingCategory] = useState<Category>(); const [deletingCategory, setDeletingCategory] = useState<Category>(); const [feedback, setFeedback] = useState(""); const [error, setError] = useState(""); const [isLoading, setIsLoading] = useState(true); const [isSubmitting, setIsSubmitting] = useState(false);
+  useEffect(() => { getCategories().then(setCategoryList).catch((e: unknown) => setError(e instanceof Error ? e.message : "Unable to load categories.")).finally(() => setIsLoading(false)); }, []);
   useEffect(() => { const timer = window.setTimeout(() => { setDebouncedQuery(query.trim().toLowerCase()); setCurrentPage(1); }, 400); return () => window.clearTimeout(timer); }, [query]);
-  useEffect(() => { if (!feedback) return; const timer = window.setTimeout(() => setFeedback(""), 2500); return () => window.clearTimeout(timer); }, [feedback]);
-
-  const filteredCategories = useMemo(() => categoryList.filter((category) => category.name.toLowerCase().includes(debouncedQuery) || category.description.toLowerCase().includes(debouncedQuery)), [categoryList, debouncedQuery]);
-  const totalPages = Math.max(1, Math.ceil(filteredCategories.length / PAGE_SIZE));
-  const visibleCategories = filteredCategories.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  function openCreate() { setEditingCategory(undefined); setFormOpen(true); }
-  function saveCategory(category: Category) { setCategoryList((current) => editingCategory ? current.map((item) => item.id === category.id ? category : item) : [category, ...current]); setFormOpen(false); setEditingCategory(undefined); setCurrentPage(1); setFeedback(editingCategory ? "Category updated successfully." : "Category created successfully."); }
-  function confirmDelete() { if (!deletingCategory) return; setCategoryList((current) => current.filter((item) => item.id !== deletingCategory.id)); setCurrentPage((page) => Math.min(page, Math.max(1, Math.ceil((categoryList.length - 1) / PAGE_SIZE)))); setFeedback("Category deleted successfully."); setDeletingCategory(undefined); }
-
-  return <Container className="py-10 sm:py-12 lg:py-16"><div className="flex flex-col gap-7 border-b border-black/10 pb-8 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-purple">Sattva administration</p><h1 className="mt-3 text-4xl sm:text-5xl">Categories</h1><p className="mt-3 text-sm text-brand-gray">Organize products for a clearer practice.</p></div><Button className="w-full sm:w-auto" onClick={openCreate} type="button">+ Add Category</Button></div>{feedback && <p aria-live="polite" className="mt-5 text-sm text-green-700">{feedback}</p>}<div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center"><CustomerSearch onChange={setQuery} value={query} /><span className="whitespace-nowrap text-sm text-brand-gray">{filteredCategories.length} {filteredCategories.length === 1 ? "category" : "categories"}</span></div><section aria-label="Category list" className="mt-6 overflow-hidden bg-white shadow-sm"><CategoryTable categories={visibleCategories} onDelete={setDeletingCategory} onEdit={(category) => { setEditingCategory(category); setFormOpen(true); }} /><CustomerPagination currentPage={Math.min(currentPage, totalPages)} onPageChange={setCurrentPage} totalPages={totalPages} /></section>{formOpen && <CategoryFormModal category={editingCategory} onClose={() => { setFormOpen(false); setEditingCategory(undefined); }} onSubmit={saveCategory} />}{deletingCategory && <DeleteCategoryDialog category={deletingCategory} onCancel={() => setDeletingCategory(undefined)} onConfirm={confirmDelete} />}</Container>;
+  const filtered = useMemo(() => categoryList.filter((category) => `${category.name} ${category.description}`.toLowerCase().includes(debouncedQuery)), [categoryList, debouncedQuery]); const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  async function save(category: Category) { try { setIsSubmitting(true); setError(""); const saved = editingCategory ? await updateCategory(category.id, { name: category.name, description: category.description, imageUrl: category.image }) : await createCategory({ name: category.name, description: category.description, imageUrl: category.image }); setCategoryList((current) => editingCategory ? current.map((item) => item.id === saved.id ? saved : item) : [saved, ...current]); setFormOpen(false); setEditingCategory(undefined); setFeedback(editingCategory ? "Category updated successfully." : "Category created successfully."); } catch (e) { setError(e instanceof Error ? e.message : "Unable to save category."); } finally { setIsSubmitting(false); } }
+  async function remove() { if (!deletingCategory) return; try { setIsSubmitting(true); setError(""); await deleteCategoryRequest(deletingCategory.id); setCategoryList((current) => current.filter((item) => item.id !== deletingCategory.id)); setDeletingCategory(undefined); setFeedback("Category deleted successfully."); } catch (e) { setError(e instanceof Error ? e.message : "Unable to delete category."); } finally { setIsSubmitting(false); } }
+  return <Container className="py-10 sm:py-12 lg:py-16"><div className="flex flex-col gap-7 border-b border-black/10 pb-8 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-purple">Sattva administration</p><h1 className="mt-3 text-4xl sm:text-5xl">Service Categories</h1><p className="mt-3 text-sm text-brand-gray">Organize guided yoga and meditation services.</p></div><Button className="w-full sm:w-auto" disabled={isSubmitting} onClick={() => { setEditingCategory(undefined); setFormOpen(true); }} type="button">+ Add Category</Button></div>{error && <p className="mt-6 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</p>}{feedback && <p className="mt-5 text-sm text-green-700">{feedback}</p>}<div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center"><CustomerSearch onChange={setQuery} value={query} /><span className="whitespace-nowrap text-sm text-brand-gray">{filtered.length} categories</span></div><section className="mt-6 overflow-hidden bg-white shadow-sm">{isLoading ? <div className="px-6 py-20 text-center text-sm text-brand-gray">Loading categories…</div> : <><CategoryTable categories={visible} onDelete={setDeletingCategory} onEdit={(category) => { setEditingCategory(category); setFormOpen(true); }} /><CustomerPagination currentPage={Math.min(currentPage, totalPages)} onPageChange={setCurrentPage} totalPages={totalPages} /></>}</section>{formOpen && <CategoryFormModal category={editingCategory} isSubmitting={isSubmitting} onClose={() => { setFormOpen(false); setEditingCategory(undefined); }} onSubmit={save} />}{deletingCategory && <DeleteCategoryDialog category={deletingCategory} isSubmitting={isSubmitting} onCancel={() => setDeletingCategory(undefined)} onConfirm={remove} />}</Container>;
 }

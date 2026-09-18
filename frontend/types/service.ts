@@ -6,5 +6,6 @@ export type Service = {
   price: string;
   sessions: string;
   image: string;
-  category: string;
+  /** Legacy mock-data field; API-backed services do not use categories. */
+  category?: string;
 };

@@ -7,9 +7,9 @@ import type { Service } from "@/types/service";
 
 export function ServiceCard({ service }: { service: Service }) {
   return (
-    <article className="group bg-gradient-to-b from-brand-purple/10 to-white">
-      <Link aria-label={`View details for ${service.name}`} className="relative block aspect-[6/7] overflow-hidden bg-brand-light-gray" href={`/services/${service.id}`}>
-        <Image alt={service.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" src={service.image} />
+    <article className="group bg-linear-to-b from-brand-purple/10 to-white">
+      <Link aria-label={`View details for ${service.name}`} className="relative block aspect-6/7 overflow-hidden bg-brand-light-gray" href={`/services/${service.id}`}>
+        <Image alt={service.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" src={service.image} unoptimized />
         <span className="absolute inset-0 flex items-center justify-center bg-brand-purple/50 text-white opacity-0 transition-opacity duration-500 group-hover:opacity-100"><ArrowIcon /></span>
       </Link>
       <div className="px-5 py-7">

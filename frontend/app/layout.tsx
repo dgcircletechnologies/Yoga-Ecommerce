@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { SiteChrome } from "@/components/layout/site-chrome";
 import { CurrencyProvider } from "@/context/currency-context";
+import { AuthProvider } from "@/context/auth-context";
 
 import "./globals.css";
 
@@ -15,7 +16,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
-        <CurrencyProvider><SiteChrome>{children}</SiteChrome></CurrencyProvider>
+        <AuthProvider><CurrencyProvider><SiteChrome>{children}</SiteChrome></CurrencyProvider></AuthProvider>
       </body>
     </html>
   );

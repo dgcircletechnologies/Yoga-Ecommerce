@@ -11,34 +11,24 @@ import { ProductPrice } from "@/components/features/products/product-price";
 import { WishlistButton } from "@/components/wishlist/wishlist-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { Container } from "@/components/ui/container";
-import { products } from "@/data/mock/products";
 import { testimonials } from "@/data/mock/testimonials";
 import type { Product } from "@/types/product";
+import { getPublicProduct } from "@/api/products.api";
 
 type ProductDetailsPageProps = { params: Promise<{ slug: string }> };
 
-function slugify(value: string) {
-  return value.toLowerCase().replaceAll(" ", "-");
-}
-
-function findProduct(slug: string) {
-  return products.find((product) => slugify(product.name) === slug);
-}
-
-export function generateStaticParams() {
-  return products.map((product) => ({ slug: slugify(product.name) }));
-}
+export async function generateStaticParams() { return []; }
 
 export async function generateMetadata({ params }: ProductDetailsPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = findProduct(slug);
+  const product = await getPublicProduct(slug).catch(() => null);
 
   return { title: product ? `${product.name} | Sattva` : "Product | Sattva", description: product?.description ?? "Explore Sattva yoga and meditation essentials." };
 }
 
 export default async function ProductDetailsPage({ params }: ProductDetailsPageProps) {
   const { slug } = await params;
-  const product = findProduct(slug);
+  const product = await getPublicProduct(slug).catch(() => null);
 
   if (!product) notFound();
 
@@ -52,7 +42,7 @@ function ProductDetails({ product }: { product: Product }) {
       <main>
         <Container className="grid gap-12 py-20 sm:py-24 lg:grid-cols-[7fr_3fr] lg:gap-12 lg:py-28">
           <section className="order-1 lg:col-start-1 lg:row-start-1">
-            <div className="relative aspect-[6/7] overflow-hidden bg-brand-light-gray"><Image alt={product.name} className="object-cover" fill priority sizes="(max-width: 1024px) 100vw, 70vw" src={product.image} /><WishlistButton className="absolute right-5 top-5 h-12 w-12 bg-white shadow-brand hover:bg-brand-purple hover:text-white" product={product} /></div>
+            <div className="relative aspect-[6/7] overflow-hidden bg-brand-light-gray"><Image alt={product.name} className="object-cover" fill priority sizes="(max-width: 1024px) 100vw, 70vw" src={product.image} unoptimized /><WishlistButton className="absolute right-5 top-5 h-12 w-12 bg-white shadow-brand hover:bg-brand-purple hover:text-white" product={product} /></div>
             <h1 className="mt-8 text-4xl sm:text-5xl">{product.name}</h1>
           </section>
 

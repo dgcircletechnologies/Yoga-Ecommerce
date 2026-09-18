@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { CloseIcon, EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import type { Customer } from "@/types/customer";
 
-type RegisterCustomerModalProps = { customer?: Customer; onClose: () => void; onSubmit: (customer: Customer) => void };
+type RegisterCustomerModalProps = { customer?: Customer; onClose: () => void; onSubmit: (values: FormValues) => Promise<void> };
 type FormValues = { name: string; email: string; password: string };
 type FormErrors = Partial<Record<keyof FormValues, string>>;
 
@@ -40,10 +40,10 @@ export function RegisterCustomerModal({ customer, onClose, onSubmit }: RegisterC
     return Object.keys(nextErrors).length === 0;
   }
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validate()) return;
-    onSubmit({ id: customer?.id ?? `cus-${Date.now()}`, name: values.name.trim(), email: values.email.trim().toLowerCase(), createdAt: customer?.createdAt ?? new Date().toISOString().slice(0, 10) });
+    await onSubmit({ name: values.name.trim(), email: values.email.trim().toLowerCase(), password: values.password });
   }
 
   const inputClass = "mt-2 h-12 w-full rounded-md border border-black/10 bg-white px-4 text-sm text-brand-dark outline-none transition-colors placeholder:text-brand-gray focus:border-brand-purple";

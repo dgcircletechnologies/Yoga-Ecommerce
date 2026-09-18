@@ -19,7 +19,7 @@ export function ProductCard({ product }: ProductCardProps) {
     <article className="group bg-gradient-to-b from-brand-purple/10 to-white">
       <div className="relative">
         <Link className="relative block aspect-[6/7] overflow-hidden bg-brand-light-gray" href={`/products/${product.name.toLowerCase().replaceAll(" ", "-")}`}>
-          <Image alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" src={product.image} />
+          <Image alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" src={product.image} unoptimized />
           <span className="absolute inset-0 flex items-center justify-center bg-brand-purple/50 text-white opacity-0 transition-opacity duration-500 group-hover:opacity-100"><ArrowIcon /></span>
           {product.badge && <span className="absolute left-4 top-4 bg-white px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-purple">{product.badge}</span>}
         </Link>

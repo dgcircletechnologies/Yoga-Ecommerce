@@ -1,6 +1,6 @@
 "use client";
 
-import { MenuIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
+import { MenuIcon, SearchIcon } from "@/components/ui/icons";
 import { ProfileDropdown } from "@/components/profile/profile-dropdown";
 
 type AdminNavbarProps = { collapsed: boolean; onMenuClick: () => void };
