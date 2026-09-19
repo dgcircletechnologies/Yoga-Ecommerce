@@ -14,11 +14,12 @@ type ProductCardProps = { product: Product };
 
 export function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
+  const productHref = `/products/${encodeURIComponent(product.slug ?? product.name.toLowerCase().replaceAll(" ", "-"))}`;
 
   return (
     <article className="group bg-gradient-to-b from-brand-purple/10 to-white">
       <div className="relative">
-        <Link className="relative block aspect-[6/7] overflow-hidden bg-brand-light-gray" href={`/products/${product.name.toLowerCase().replaceAll(" ", "-")}`}>
+        <Link className="relative block aspect-[6/7] overflow-hidden bg-brand-light-gray" href={productHref}>
           <Image alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" src={product.image} unoptimized />
           <span className="absolute inset-0 flex items-center justify-center bg-brand-purple/50 text-white opacity-0 transition-opacity duration-500 group-hover:opacity-100"><ArrowIcon /></span>
           {product.badge && <span className="absolute left-4 top-4 bg-white px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-purple">{product.badge}</span>}
@@ -27,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </div>
       <div className="bg-transparent px-5 py-8">
         <div className="flex items-center justify-between gap-4 text-brand-dark"><span className="text-sm">{product.category}</span><ProductPrice className="text-xl font-semibold" price={product.price} /></div>
-        <Link className="mt-5 block" href={`/products/${product.name.toLowerCase().replaceAll(" ", "-")}`}>
+        <Link className="mt-5 block" href={productHref}>
           <h3 className="text-2xl transition-colors group-hover:text-brand-purple">{product.name}</h3>
         </Link>
         <div className="flex w-full items-end gap-4">

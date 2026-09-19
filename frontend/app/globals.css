@@ -48,7 +48,9 @@ a {
 
 .mobile-navigation-scroll {
   scrollbar-width: none;
-  overscroll-behavior: contain;
+  /* Keep horizontal overscroll inside the slider without blocking vertical page scroll. */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
 }
 
 .mobile-navigation-scroll::-webkit-scrollbar {

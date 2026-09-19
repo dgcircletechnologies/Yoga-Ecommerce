@@ -1,5 +1,6 @@
 export type Product = {
   id?: string;
+  slug?: string;
   name: string;
   category: string;
   description: string;
@@ -11,6 +12,7 @@ export type Product = {
 };
 
 export type ProductCategory = {
+  id?: string;
   name: string;
   detail: string;
   description: string;
