@@ -12,6 +12,7 @@ import { TagsModule } from './modules/tags/tags.module.js';
 import { OrdersModule } from './modules/orders/orders.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
+import { CloudinaryModule } from './cloudinary/cloudinary.module.js';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { CategoriesModule } from './modules/categories/categories.module.js';
     OrdersModule,
     PaymentsModule,
     CategoriesModule,
+    CloudinaryModule,
   ],
 })
 export class AppModule {}

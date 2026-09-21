@@ -8,4 +8,10 @@ export default () => ({
     process.env.FRONTEND_URL ??
     process.env.CORS_ORIGIN ??
     'http://localhost:3000',
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
+    folder: process.env.CLOUDINARY_PRODUCT_FOLDER,
+  },
 });

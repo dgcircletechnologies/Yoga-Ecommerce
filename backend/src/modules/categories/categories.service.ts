@@ -1,46 +1,21 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service.js';
 import type { CreateCategoryDto } from './dto/create-category.dto.js';
 import type { UpdateCategoryDto } from './dto/update-category.dto.js';
-
-const categorySelect = {
-  id: true, name: true, slug: true, description: true, images: true,
-  createdAt: true, updatedAt: true, _count: { select: { products: true } },
-} as const;
-
-function slugify(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120) || 'category';
-}
-
+const categorySelect = { id: true, name: true, slug: true, description: true, imageUrl: true, imagePublicId: true, createdAt: true, updatedAt: true, _count: { select: { products: true } } } as const;
+const slugify = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120) || 'category';
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
-  findAll() { return this.prisma.category.findMany({ orderBy: { createdAt: 'desc' }, select: categorySelect }); }
-  async findOne(id: string) {
-    const category = await this.prisma.category.findUnique({ where: { id }, select: categorySelect });
-    if (!category) throw new NotFoundException('Category not found');
-    return category;
-  }
-  async create(dto: CreateCategoryDto) {
-    try {
-      const imageUrl = dto.imageUrl.trim();
-      return await this.prisma.category.create({ data: { name: dto.name.trim(), slug: slugify(dto.name), description: dto.description?.trim() || null, images: [imageUrl] }, select: categorySelect });
-    } catch (error: unknown) { this.throwConflict(error); }
-  }
-  async update(id: string, dto: UpdateCategoryDto) {
-    await this.findOne(id);
-    const data: Record<string, unknown> = {};
-    if (dto.name !== undefined) { data.name = dto.name.trim(); data.slug = slugify(dto.name); }
-    if (dto.description !== undefined) data.description = dto.description.trim() || null;
-    if (dto.imageUrl !== undefined) { const imageUrl = dto.imageUrl.trim(); data.images = [imageUrl]; }
-    try { return await this.prisma.category.update({ where: { id }, data, select: categorySelect }); }
-    catch (error: unknown) { this.throwConflict(error); }
-  }
-  async remove(id: string) {
-    await this.findOne(id);
-    try { await this.prisma.category.delete({ where: { id } }); return { id }; }
-    catch (error: unknown) { if (this.code(error) === 'P2003') throw new ConflictException('Category cannot be deleted while it is assigned to products'); throw error; }
-  }
+  private readonly logger = new Logger(CategoriesService.name);
+  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
+  async findAll() { const rows = await this.prisma.category.findMany({ orderBy: { createdAt: 'desc' }, select: categorySelect }); return rows.map((row) => this.present(row)); }
+  async findOne(id: string) { const row = await this.prisma.category.findUnique({ where: { id }, select: categorySelect }); if (!row) throw new NotFoundException('Category not found'); return this.present(row); }
+  async create(dto: CreateCategoryDto, file?: Express.Multer.File) { const uploaded = file ? await this.cloudinary.uploadImage(file, 'categories') : undefined; try { const row = await this.prisma.category.create({ data: { name: dto.name.trim(), slug: slugify(dto.name), description: dto.description?.trim() || null, imageUrl: uploaded?.secure_url ?? dto.imageUrl?.trim() ?? null, imagePublicId: uploaded?.public_id ?? null }, select: categorySelect }); return this.present(row); } catch (error) { if (uploaded) await this.cleanup(uploaded.public_id); this.throwConflict(error); } }
+  async update(id: string, dto: UpdateCategoryDto, file?: Express.Multer.File) { const current = await this.prisma.category.findUnique({ where: { id }, select: categorySelect }); if (!current) throw new NotFoundException('Category not found'); const uploaded = file ? await this.cloudinary.uploadImage(file, 'categories') : undefined; const data: Record<string, unknown> = {}; if (dto.name !== undefined) { data.name = dto.name.trim(); data.slug = slugify(dto.name); } if (dto.description !== undefined) data.description = dto.description.trim() || null; if (uploaded) { data.imageUrl = uploaded.secure_url; data.imagePublicId = uploaded.public_id; } else if (dto.removeImage) { data.imageUrl = null; data.imagePublicId = null; } else if (dto.imageUrl !== undefined) { data.imageUrl = dto.imageUrl.trim(); data.imagePublicId = null; } try { const row = await this.prisma.category.update({ where: { id }, data, select: categorySelect }); if ((uploaded || dto.removeImage || dto.imageUrl !== undefined) && current.imagePublicId && current.imagePublicId !== uploaded?.public_id) await this.cleanup(current.imagePublicId); return this.present(row); } catch (error) { if (uploaded) await this.cleanup(uploaded.public_id); this.throwConflict(error); } }
+  async remove(id: string) { const current = await this.prisma.category.findUnique({ where: { id }, select: categorySelect }); if (!current) throw new NotFoundException('Category not found'); try { await this.prisma.category.delete({ where: { id } }); if (current.imagePublicId) await this.cleanup(current.imagePublicId); return { id }; } catch (error) { if (this.code(error) === 'P2003') throw new ConflictException('Category cannot be deleted while it is assigned to products'); throw error; } }
+  private async cleanup(publicId: string) { try { await this.cloudinary.deleteImage(publicId); } catch (error) { this.logger.error(`Cloudinary cleanup failed for ${publicId}`, error); } }
+  private present(row: any) { return { ...row, imageUrl: row.imageUrl ?? null, imagePublicId: row.imagePublicId ?? null }; }
   private throwConflict(error: unknown): never { if (this.code(error) === 'P2002') throw new ConflictException('A category with this name already exists'); throw error; }
   private code(error: unknown) { return error && typeof error === 'object' && 'code' in error ? error.code : undefined; }
 }

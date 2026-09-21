@@ -13,8 +13,8 @@ model Service {
   // Controls whether the service is available for purchase
   status ServiceStatus @default(ACTIVE)
 
-  // Service image URL
-  images String[]
+  imageUrl String? @db.VarChar(500)
+  imagePublicId String? @db.VarChar(255)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

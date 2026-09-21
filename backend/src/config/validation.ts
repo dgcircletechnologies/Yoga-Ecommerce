@@ -1,4 +1,11 @@
-const requiredVariables = ['DATABASE_URL', 'JWT_SECRET'] as const;
+const requiredVariables = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+  'CLOUDINARY_PRODUCT_FOLDER',
+] as const;
 
 export function validateEnvironment(config: Record<string, unknown>) {
   const missing = requiredVariables.filter((name) => {

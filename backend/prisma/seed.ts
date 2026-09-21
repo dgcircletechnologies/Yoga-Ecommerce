@@ -49,6 +49,12 @@ async function main() {
       imageUrl: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=900&q=80',
     },
     {
+      name: 'Meditation & Breathwork',
+      slug: 'meditation-breathwork',
+      description: 'Simple tools for mindful breathing, meditation, and a calmer daily rhythm.',
+      imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=900&q=80',
+    },
+    {
       name: 'Apparel',
       slug: 'apparel',
       description: 'Lightweight, flexible clothing made for movement and calm.',
@@ -64,11 +70,9 @@ async function main() {
         name: category.name,
         description: category.description,
         imageUrl: category.imageUrl,
-        images: [category.imageUrl],
       },
       create: {
         ...category,
-        images: [category.imageUrl],
       },
       select: { id: true },
     });
@@ -137,6 +141,26 @@ async function main() {
       imageUrl: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=900&q=80',
     },
     {
+      name: 'Mindful Breathwork Combo',
+      slug: 'mindful-breathwork-combo',
+      categorySlug: 'meditation-breathwork',
+      description: 'A guided-practice bundle with meditation cushions, a breathing journal, and calming accessories.',
+      price: '88.00',
+      stock: 14,
+      tags: ['COMBO', 'BEST_SELLER'],
+      imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=900&q=80',
+    },
+    {
+      name: 'Sandalwood Meditation Cushion',
+      slug: 'sandalwood-meditation-cushion',
+      categorySlug: 'meditation-breathwork',
+      description: 'A firm, supportive cushion for comfortable seated meditation and breathwork sessions.',
+      price: '46.00',
+      stock: 20,
+      tags: ['NEW', 'RELAXATION'],
+      imageUrl: 'https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?auto=format&fit=crop&w=900&q=80',
+    },
+    {
       name: 'Studio-to-Street Combo',
       slug: 'studio-to-street-combo',
       categorySlug: 'apparel',
@@ -161,7 +185,7 @@ async function main() {
         stock: product.stock,
         categoryId: category.id,
         tags: product.tags,
-        images: [product.imageUrl],
+        imageUrl: product.imageUrl,
         isActive: true,
       },
       create: {
@@ -172,7 +196,7 @@ async function main() {
         stock: product.stock,
         categoryId: category.id,
         tags: product.tags,
-        images: [product.imageUrl],
+        imageUrl: product.imageUrl,
       },
     });
   }
@@ -202,6 +226,14 @@ async function main() {
       sessions: 6,
       imageUrl: 'https://images.unsplash.com/photo-1510894347719-fc735f0c65b7?auto=format&fit=crop&w=900&q=80',
     },
+    {
+      name: 'Guided Breathwork & Meditation',
+      slug: 'guided-breathwork-meditation',
+      description: 'Learn practical breathing and meditation techniques in a supportive guided program.',
+      price: '145.00',
+      sessions: 4,
+      imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=900&q=80',
+    },
   ];
 
   for (const service of services) {
@@ -213,7 +245,7 @@ async function main() {
         price: service.price,
         sessions: service.sessions,
         status: 'ACTIVE',
-        images: [service.imageUrl],
+        imageUrl: service.imageUrl,
       },
       create: {
         name: service.name,
@@ -221,7 +253,7 @@ async function main() {
         description: service.description,
         price: service.price,
         sessions: service.sessions,
-        images: [service.imageUrl],
+        imageUrl: service.imageUrl,
         status: 'ACTIVE',
       },
     });

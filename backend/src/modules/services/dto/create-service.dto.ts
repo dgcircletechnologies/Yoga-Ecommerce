@@ -5,6 +5,6 @@ export class CreateServiceDto {
   @IsOptional() @IsString() description?: string;
   @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) price!: number;
   @Type(() => Number) @IsInt() @Min(1) sessions!: number;
-  @IsString() @IsNotEmpty() @IsUrl({ protocols: ['http', 'https'], require_protocol: true }) imageUrl!: string;
+  @IsOptional() @IsUrl({ protocols: ['http', 'https'], require_protocol: true }) imageUrl?: string;
   @IsOptional() @IsBoolean() status?: boolean;
 }

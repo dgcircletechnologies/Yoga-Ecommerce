@@ -4,7 +4,7 @@ model Category {
   slug        String   @unique @db.VarChar(120)
   description String?  @db.VarChar(500)
   imageUrl    String?  @db.VarChar(500)
-  images      String[] @db.VarChar(500)
+  imagePublicId String? @db.VarChar(255)
 
   products Product[]
 
