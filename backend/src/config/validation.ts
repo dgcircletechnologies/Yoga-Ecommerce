@@ -5,6 +5,8 @@ const requiredVariables = [
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
   'CLOUDINARY_PRODUCT_FOLDER',
+  'RAZORPAY_KEY_ID',
+  'RAZORPAY_KEY_SECRET',
 ] as const;
 
 export function validateEnvironment(config: Record<string, unknown>) {

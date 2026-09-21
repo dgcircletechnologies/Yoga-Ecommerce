@@ -23,7 +23,7 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { cartItemCount } = useCart();
-  const { isAuthenticated, logout } = useAuth();
+  const { currentUser, isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -47,11 +47,12 @@ export function Header() {
   }, [isMobileMenuOpen]);
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  const logoHref = currentUser?.role === "ADMIN" ? "/admin" : "/";
 
   return (
     <header className={`fixed inset-x-0 top-0 z-20 border-b text-white transition-colors duration-300 ${isScrolled ? "border-brand-purple bg-brand-purple" : "border-white/20 bg-brand-dark/35 backdrop-blur-[2px]"}`}>
       <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
-        <Logo inverted />
+        <Logo href={logoHref} inverted />
         <nav aria-label="Main navigation" className="hidden items-center gap-8 text-[11px] font-semibold uppercase tracking-[0.18em] lg:flex">
           <Link aria-current={isActive("/") ? "page" : undefined} className={`transition-opacity hover:opacity-70 ${isActive("/") ? "border-b border-white pb-1" : ""}`} href="/">Home</Link>
           {navigation.map((item) => <Link aria-current={isActive(item.href) ? "page" : undefined} className={`transition-opacity hover:opacity-70 ${isActive(item.href) ? "border-b border-white pb-1" : ""}`} href={item.href} key={item.label}>{item.label}</Link>)}
@@ -68,7 +69,7 @@ export function Header() {
       <div aria-hidden={!isMobileMenuOpen} className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-700 ${isMobileMenuOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} onClick={closeMobileMenu} />
       <aside aria-label="Mobile navigation" aria-modal="true" className={`mobile-navigation-scroll fixed inset-y-0 left-0 z-50 h-[100dvh] w-[90vw] max-w-[420px] overflow-x-hidden overflow-y-auto bg-brand-purple px-5 py-5 text-white shadow-brand transition-transform duration-700 ease-in-out sm:px-8 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`} role="dialog">
         <div className="flex items-center justify-between border-b border-white/20 pb-5">
-          <Logo inverted />
+          <Logo href={logoHref} inverted />
           <button aria-label="Close menu" className="transition-colors hover:text-brand-lavender" onClick={closeMobileMenu} type="button"><CloseIcon /></button>
         </div>
         <nav className="mt-8 flex flex-col" aria-label="Mobile navigation links">

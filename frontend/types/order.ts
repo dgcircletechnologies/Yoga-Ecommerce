@@ -1,5 +1,5 @@
 export type OrderStatus = "New" | "Confirmed" | "Processing" | "Completed" | "Shipped" | "Delivered" | "Cancelled" | "Refunded";
-export type PaymentStatus = "Paid" | "Pending" | "Refunded";
+export type PaymentStatus = "Paid" | "Pending" | "Failed" | "Refunded";
 export type OrderType = "Product" | "Service" | "Mixed";
 export type OrderCustomer = { name: string; email: string; phone?: string; address?: string };
 export type OrderItem = { name: string; quantity: number; price?: number; total?: number; type?: "PRODUCT" | "SERVICE"; image?: string; sessions?: number };

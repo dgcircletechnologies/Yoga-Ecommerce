@@ -1,0 +1,3 @@
+import { apiRequest } from "./client";
+export type AdminPayment = { id: string; orderId: string; status: string; amount: number; currency: string; razorpayOrderId: string | null; razorpayPaymentId: string | null; paymentMethod: string | null; failureReason: string | null; createdAt: string; updatedAt: string; order: { id: string; name: string; email: string; total: number; status: string; createdAt: string } };
+export async function getAdminPayments(status?: string) { const query = status ? `?status=${encodeURIComponent(status)}` : ""; return (await apiRequest<{ success: boolean; data: AdminPayment[] }>(`/payments${query}`)).data; }
