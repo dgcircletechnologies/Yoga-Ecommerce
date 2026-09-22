@@ -1,3 +1,3 @@
-import Link from "next/link";
-type Props = { searchParams: Promise<{ orderId?: string }> };
-export default async function PaymentRedirectPage({ searchParams }: Props) { const { orderId } = await searchParams; return <main className="flex min-h-[70vh] items-center justify-center px-5 py-20 text-center"><div className="max-w-md"><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-purple">Order received</p><h1 className="mt-3 text-4xl sm:text-5xl">Ready for payment</h1><p className="mt-5 text-sm leading-6 text-brand-gray">Your order has been created and is awaiting payment confirmation. No payment has been charged yet.</p>{orderId && <p className="mt-4 text-xs text-brand-gray">Order reference: {orderId}</p>}<Link className="mt-8 inline-flex min-h-12 items-center bg-brand-purple px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-brand-dark" href="/products">Continue shopping</Link></div></main>; }
+import { PaymentResultPage } from '@/components/checkout/payment-result-page';
+type Props = { searchParams: Promise<{ orderId?: string; status?: string }> };
+export default async function PaymentRedirectPage({ searchParams }: Props) { const params = await searchParams; return <PaymentResultPage orderId={params.orderId} />; }

@@ -10,8 +10,14 @@ model Payment {
   currency String  @default("USD") @db.VarChar(3)
 
   // Payment provider information
+  razorpayOrderId   String? @unique
+  razorpayPaymentId String? @unique
+  razorpaySignature String?
   transactionId String? @unique
   paymentMethod String? @db.VarChar(50)
+  failureReason String?
+  gatewayMetadata Json?
+  attempt Int @default(0)
 
   paidAt DateTime?
 

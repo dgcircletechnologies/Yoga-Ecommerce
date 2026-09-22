@@ -1,0 +1,10 @@
+import { apiRequest } from './client';
+
+export type Payment = { id: string; orderId: string; status: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED' | 'CANCELLED'; amount: number; currency: string; razorpayOrderId: string | null; razorpayPaymentId: string | null; transactionId: string | null; paymentMethod: string | null; failureReason: string | null; attempt: number; createdAt: string; updatedAt: string; paidAt: string | null; order?: { id: string; userId: string; name: string; email: string; total: number; status: string; createdAt: string } };
+type Response<T> = { success: boolean; data: T };
+
+export async function createPaymentOrder(orderId: string, currency: string, exchangeRate: number, email?: string) { return (await apiRequest<Response<{ keyId: string; razorpayOrderId: string; amount: number; currency: string; paymentId: string; orderId: string; attempt: number }>>('/payments/create-order', { method: 'POST', body: JSON.stringify({ orderId, currency, exchangeRate, email }) })).data; }
+export async function verifyPayment(data: { orderId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string; email?: string }) { return (await apiRequest<Response<Payment>>('/payments/verify', { method: 'POST', body: JSON.stringify(data) })).data; }
+export async function markPaymentFailed(data: { orderId: string; razorpayOrderId: string; email?: string; reason?: string }) { return (await apiRequest<Response<Payment>>('/payments/failure', { method: 'POST', body: JSON.stringify(data) })).data; }
+export async function getPaymentForOrder(orderId: string, email?: string) { const params = email ? `?email=${encodeURIComponent(email)}` : ''; return (await apiRequest<Response<Payment>>(`/payments/order/${encodeURIComponent(orderId)}${params}`)).data; }
+export async function getAdminPayments(query: { status?: string; search?: string } = {}) { const params = new URLSearchParams(); if (query.status) params.set('status', query.status); if (query.search) params.set('search', query.search); return (await apiRequest<Response<Payment[]>>(`/payments${params.size ? `?${params}` : ''}`)).data; }

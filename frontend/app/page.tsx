@@ -15,8 +15,8 @@ const HOMEPAGE_LIMIT = 10;
 
 export const dynamic = "force-dynamic";
 
-function resultData<T>(result: PromiseSettledResult<T[]>): T[] {
-  return result.status === "fulfilled" ? result.value.slice(0, HOMEPAGE_LIMIT) : [];
+function resultData<T>(result: PromiseSettledResult<T[]>, filter?: (item: T) => boolean): T[] {
+  return result.status === "fulfilled" ? result.value.filter(filter ?? (() => true)).slice(0, HOMEPAGE_LIMIT) : [];
 }
 
 export default async function Home() {
@@ -27,7 +27,7 @@ export default async function Home() {
   ]);
   const comboProductsResult = await Promise.allSettled([getPublicProducts("tag=COMBO")]);
 
-  const products = resultData(productsResult);
+  const products = resultData(productsResult, (product) => !product.tags?.some((tag) => tag.toUpperCase() === "COMBO"));
   const comboProducts = resultData(comboProductsResult[0]);
   const categories = resultData(categoriesResult);
   const services = resultData(servicesResult);

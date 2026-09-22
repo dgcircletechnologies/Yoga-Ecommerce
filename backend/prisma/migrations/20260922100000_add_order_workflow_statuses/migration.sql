@@ -1,0 +1,1 @@
+-- Historical placeholder migration retained for repository/database migration ordering.

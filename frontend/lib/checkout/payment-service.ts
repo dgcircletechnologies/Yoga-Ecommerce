@@ -1,15 +1,21 @@
-export type PaymentRequest = {
-  baseAmountUSD: number;
-  displayAmount: number;
-  currency: string;
-  exchangeRate: number;
-  customerEmail: string;
-};
+import { createPaymentOrder, markPaymentFailed, verifyPayment } from '@/api/payments.api';
 
-/** Adapter boundary for the eventual payment provider (Stripe, Adyen, etc.). */
-export async function beginPayment(request: PaymentRequest) {
-  return {
-    provider: "placeholder",
-    redirectUrl: `/checkout/payment?amount=${request.displayAmount.toFixed(2)}&currency=${request.currency}`,
-  };
+type RazorpayOptions = { key: string; amount: number; currency: string; name: string; description: string; order_id: string; prefill: { email: string }; theme: { color: string }; handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => void; modal: { ondismiss: () => void } };
+type RazorpayConstructor = new (options: RazorpayOptions) => { open: () => void; on?: (event: string, handler: (response: { error?: { description?: string } }) => void) => void };
+declare global { interface Window { Razorpay?: RazorpayConstructor } }
+
+export class PaymentFlowError extends Error { constructor(message: string, readonly orderId: string) { super(message); } }
+
+function loadRazorpayScript() { return new Promise<void>((resolve, reject) => { if (window.Razorpay) return resolve(); const existing = document.querySelector<HTMLScriptElement>('script[data-razorpay]'); if (existing) { existing.addEventListener('load', () => resolve(), { once: true }); existing.addEventListener('error', () => reject(new Error('Unable to load Razorpay Checkout.')), { once: true }); return; } const script = document.createElement('script'); script.src = 'https://checkout.razorpay.com/v1/checkout.js'; script.async = true; script.dataset.razorpay = 'true'; script.onload = () => resolve(); script.onerror = () => reject(new Error('Unable to load Razorpay Checkout.')); document.body.appendChild(script); }); }
+
+export async function beginPayment({ orderId, email, currency, exchangeRate }: { orderId: string; email: string; currency: string; exchangeRate: number }) {
+  let paymentOrder: Awaited<ReturnType<typeof createPaymentOrder>>;
+  try { paymentOrder = await createPaymentOrder(orderId, currency, exchangeRate, email); } catch (error) { throw new PaymentFlowError(error instanceof Error ? error.message : 'Unable to prepare payment.', orderId); }
+  await loadRazorpayScript();
+  const RazorpayCheckout = window.Razorpay;
+  if (!RazorpayCheckout) throw new PaymentFlowError('Razorpay Checkout is unavailable.', orderId);
+  return new Promise<'success' | 'cancelled' | 'failed'>((resolve, reject) => {
+    const options: RazorpayOptions = { key: paymentOrder.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '', amount: paymentOrder.amount, currency: paymentOrder.currency, name: 'Sattva Yoga', description: `Payment for order ${orderId.slice(0, 8)}`, order_id: paymentOrder.razorpayOrderId, prefill: { email }, theme: { color: '#5e3b76' }, handler: async (response) => { try { await verifyPayment({ orderId, email, razorpayOrderId: response.razorpay_order_id, razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature }); resolve('success'); } catch (error) { reject(new PaymentFlowError(error instanceof Error ? error.message : 'Payment verification failed.', orderId)); } }, modal: { ondismiss: () => resolve('cancelled') } };
+    try { const checkout = new RazorpayCheckout(options); checkout.on?.('payment.failed', (response) => { void markPaymentFailed({ orderId, email, razorpayOrderId: paymentOrder.razorpayOrderId, reason: response.error?.description }); resolve('failed'); }); checkout.open(); } catch { reject(new PaymentFlowError('Unable to open Razorpay Checkout.', orderId)); }
+  });
 }

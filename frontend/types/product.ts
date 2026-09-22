@@ -9,6 +9,7 @@ export type Product = {
   image: string;
   badge?: string;
   stock: string;
+  tags?: string[];
 };
 
 export type ProductCategory = {

@@ -5,14 +5,14 @@ import { useState } from "react";
 
 import { PurchaseCustomerForm } from "@/components/purchase/purchase-customer-form";
 import type { CheckoutDetails } from "@/components/checkout/checkout-page";
+import { checkoutDetailsFromUser } from "@/lib/checkout/customer-details";
 import { usdPrice, useCurrency } from "@/context/currency-context";
 import { createOrder } from "@/api/orders.api";
+import { useAuth } from "@/hooks/use-auth";
 import { PageHero } from "@/components/layout/page-hero";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import type { Service } from "@/types/service";
-
-const emptyDetails: CheckoutDetails = { name: "", email: "", phone: "", phoneCountry: "", address1: "", address2: "", city: "", state: "", postalCode: "", country: "" };
 
 export function ServiceDetail({ service }: { service: Service }) {
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
@@ -20,6 +20,7 @@ export function ServiceDetail({ service }: { service: Service }) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { formatPrice } = useCurrency();
+  const { currentUser } = useAuth();
 
   async function submitRequest(values: CheckoutDetails) {
     const address = [values.address1, values.address2, values.city, values.state, values.postalCode, values.country].filter(Boolean).join(", ");
@@ -49,7 +50,7 @@ export function ServiceDetail({ service }: { service: Service }) {
           </aside>
         </Container>
       </main>
-      {isPurchaseOpen && <PurchaseCustomerForm description="Share your details and we will follow up to confirm your service request." initialValues={emptyDetails} onClose={() => setIsPurchaseOpen(false)} onContinue={submitRequest} onMemberContinue={() => setIsPurchaseOpen(false)} submitLabel="Submit request" summary={{ kind: "Service", name: service.name, price: formatPrice(usdPrice(service.price)), sessions: service.sessions }} title="Book your service" />}
+      {isPurchaseOpen && <PurchaseCustomerForm description="Share your details and we will follow up to confirm your service request." initialValues={checkoutDetailsFromUser(currentUser)} onClose={() => setIsPurchaseOpen(false)} onContinue={submitRequest} onMemberContinue={() => setIsPurchaseOpen(false)} submitLabel="Submit request" summary={{ kind: "Service", name: service.name, price: formatPrice(usdPrice(service.price)), sessions: service.sessions }} title="Book your service" />}
     </>
   );
 }
