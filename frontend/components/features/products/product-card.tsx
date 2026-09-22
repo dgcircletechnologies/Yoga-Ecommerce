@@ -31,7 +31,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <Link className="mt-5 block" href={productHref}>
           <h3 className="text-2xl transition-colors group-hover:text-brand-purple">{product.name}</h3>
         </Link>
-        <div className="flex w-full items-end gap-4">
+        <div className="flex w-full items-start gap-4">
           <p className="mt-4 min-w-0 flex-1 text-sm leading-6 text-black">{product.description}</p>
           <button
             aria-label={`Add ${product.name} to cart`}
