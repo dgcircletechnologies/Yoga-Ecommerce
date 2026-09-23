@@ -62,6 +62,55 @@ export class ServiceBookingsService {
     });
   }
 
+  async adminList(query: { page?: string; limit?: string; search?: string; status?: string; paymentStatus?: string; serviceId?: string; trainerId?: string; date?: string; upcoming?: string }) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(query.limit) || 10));
+    const search = query.search?.trim();
+    const where: any = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.serviceId ? { serviceId: query.serviceId } : {}),
+      ...(query.trainerId ? { trainerId: query.trainerId } : {}),
+      ...(query.paymentStatus ? { order: { payment: { status: query.paymentStatus } } } : {}),
+      ...(search ? { OR: [{ id: { contains: search, mode: 'insensitive' } }, { order: { is: { name: { contains: search, mode: 'insensitive' } } } }, { order: { is: { email: { contains: search, mode: 'insensitive' } } } }, { service: { is: { name: { contains: search, mode: 'insensitive' } } } }, { trainer: { is: { name: { contains: search, mode: 'insensitive' } } } }] } : {}),
+      ...(query.date ? { sessions: { some: { scheduledAt: { gte: new Date(`${query.date}T00:00:00`), lt: new Date(`${query.date}T23:59:59.999`) } } } } : {}),
+      ...(query.upcoming === 'true' ? { sessions: { some: { scheduledAt: { gte: new Date() }, status: { not: 'CANCELLED' } } } } : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.serviceBooking.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: 'desc' }, include: this.adminInclude }),
+      this.prisma.serviceBooking.count({ where }),
+    ]);
+    return { items: rows.map((row) => this.presentAdmin(row)), pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) } };
+  }
+
+  async adminStats() {
+    const [total, pending, scheduled, completed, cancelled, revenue, upcoming] = await Promise.all([
+      this.prisma.serviceBooking.count(),
+      this.prisma.serviceBooking.count({ where: { status: 'PENDING_PAYMENT' } }),
+      this.prisma.serviceBooking.count({ where: { status: 'SCHEDULED' } }),
+      this.prisma.serviceBooking.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.serviceBooking.count({ where: { status: 'CANCELLED' } }),
+      this.prisma.serviceBooking.aggregate({ _sum: { totalAmount: true }, where: { order: { payment: { status: 'PAID' } } } }),
+      this.prisma.serviceSession.count({ where: { scheduledAt: { gte: new Date() }, status: { not: 'CANCELLED' }, booking: { status: { not: 'CANCELLED' } } } }),
+    ]);
+    return { total, pending, scheduled, upcoming, completed, cancelled, revenue: Number(revenue._sum.totalAmount ?? 0) };
+  }
+
+  async adminGet(id: string) {
+    const row = await this.prisma.serviceBooking.findUnique({ where: { id }, include: this.adminInclude });
+    if (!row) throw new NotFoundException('Service booking not found');
+    return this.presentAdmin(row);
+  }
+
+  async updateStatus(id: string, status: string) {
+    try {
+      return this.presentAdmin(await this.prisma.serviceBooking.update({ where: { id }, data: { status: status as never }, include: this.adminInclude }));
+    } catch { throw new NotFoundException('Service booking not found'); }
+  }
+
+  private readonly adminInclude = { service: true, trainer: { select: { id: true, name: true, email: true, phone: true, profileImageUrl: true, specialty: true, experience: true } }, sessions: { orderBy: { scheduledAt: 'asc' as const } }, order: { include: { payment: true } } } as const;
+
+  private presentAdmin(row: any) { return { id: row.id, orderId: row.orderId, service: row.service ? { id: row.service.id, name: row.service.name, description: row.service.description, price: Number(row.service.price), imageUrl: row.service.imageUrl } : null, trainer: row.trainer, customer: { id: row.customerId, name: row.order?.name, email: row.order?.email, phone: row.order?.phone, address: row.order ? { address: row.order.address, city: row.order.city, state: row.order.state, country: row.order.country, postalCode: row.order.postalCode } : null }, quantity: row.quantity, pricePerSession: Number(row.pricePerSession), totalAmount: Number(row.totalAmount), status: row.status, payment: row.order?.payment ? { id: row.order.payment.id, status: row.order.payment.status, amount: Number(row.order.payment.amount), currency: row.order.payment.currency, paymentMethod: row.order.payment.paymentMethod, paidAt: row.order.payment.paidAt } : null, sessions: row.sessions, createdAt: row.createdAt, updatedAt: row.updatedAt }; }
+
   private toDate(date: string, time: string) { const value = new Date(`${date}T${time}:00`); if (Number.isNaN(value.getTime())) throw new ConflictException('Invalid session date or time'); return value; }
   private present(row: any, includeOtp: boolean) { return { id: row.id, orderId: row.orderId, service: row.service, trainer: row.trainer, quantity: row.quantity, pricePerSession: Number(row.pricePerSession), totalAmount: Number(row.totalAmount), status: row.status, paymentStatus: row.order?.payment?.status ?? null, address: { address: row.address, city: row.city, state: row.state, country: row.country, postalCode: row.postalCode }, sessions: row.sessions, ...(includeOtp ? { otp: row.otp } : {}) }; }
 }
