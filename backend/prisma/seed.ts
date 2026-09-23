@@ -201,37 +201,90 @@ async function main() {
     });
   }
 
+  const trainerPassword = process.env.SEED_TRAINER_PASSWORD ?? 'Trainer@12345';
+  const trainers = [
+    {
+      name: 'Maya Sharma',
+      email: 'maya.trainer@sattva.test',
+      phone: '9876543210',
+      address1: 'Sattva Wellness Studio',
+      profileUrl: 'https://sattva.test/trainers/maya-sharma',
+      aboutMe: 'Maya helps students build a calm, consistent practice through mindful movement and breathwork.',
+      experience: '8 years',
+      specialty: 'Vinyasa, breathwork and mobility',
+      profileImageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+      name: 'Arjun Mehta',
+      email: 'arjun.trainer@sattva.test',
+      phone: '9876543211',
+      address1: 'Sattva Wellness Studio',
+      profileUrl: 'https://sattva.test/trainers/arjun-mehta',
+      aboutMe: 'Arjun guides restorative sessions designed around recovery, alignment, and sustainable strength.',
+      experience: '10 years',
+      specialty: 'Restorative yoga and alignment',
+      profileImageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+      name: 'Nisha Rao',
+      email: 'nisha.trainer@sattva.test',
+      phone: '9876543212',
+      address1: 'Sattva Wellness Studio',
+      profileUrl: 'https://sattva.test/trainers/nisha-rao',
+      aboutMe: 'Nisha creates welcoming sessions for beginners and anyone looking to reconnect with stillness.',
+      experience: '6 years',
+      specialty: 'Beginner yoga and meditation',
+      profileImageUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80',
+    },
+  ];
+
+  const trainerByEmail = new Map<string, { id: string }>();
+  for (const trainer of trainers) {
+    const password = await argon2.hash(trainerPassword);
+    const saved = await prisma.user.upsert({
+      where: { email: trainer.email },
+      update: { ...trainer, password, role: 'TRAINER' },
+      create: { ...trainer, password, role: 'TRAINER' },
+      select: { id: true },
+    });
+    trainerByEmail.set(trainer.email, saved);
+  }
+
   const services = [
     {
       name: 'Beginner Yoga Foundations',
       slug: 'beginner-yoga-foundations',
-      description: 'Build confidence with alignment, breathing, and foundational yoga postures.',
-      price: '120.00',
-      sessions: 4,
+      description: 'An offline home session for building confidence with alignment, breathing, and foundational yoga postures.',
+      price: '45.00',
+      sessions: 1,
+      trainerEmail: 'maya.trainer@sattva.test',
       imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=900&q=80',
     },
     {
       name: 'Private Mindfulness Coaching',
       slug: 'private-mindfulness-coaching',
-      description: 'Personalized one-to-one guidance for building a sustainable mindfulness routine.',
-      price: '85.00',
+      description: 'A private offline home session for building a sustainable mindfulness and meditation routine.',
+      price: '55.00',
       sessions: 1,
+      trainerEmail: 'nisha.trainer@sattva.test',
       imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=900&q=80',
     },
     {
       name: 'Restorative Yoga Series',
       slug: 'restorative-yoga-series',
-      description: 'A gentle multi-session series focused on relaxation, mobility, and recovery.',
-      price: '180.00',
-      sessions: 6,
+      description: 'A gentle offline home session focused on relaxation, mobility, and recovery.',
+      price: '50.00',
+      sessions: 1,
+      trainerEmail: 'arjun.trainer@sattva.test',
       imageUrl: 'https://images.unsplash.com/photo-1510894347719-fc735f0c65b7?auto=format&fit=crop&w=900&q=80',
     },
     {
       name: 'Guided Breathwork & Meditation',
       slug: 'guided-breathwork-meditation',
-      description: 'Learn practical breathing and meditation techniques in a supportive guided program.',
-      price: '145.00',
-      sessions: 4,
+      description: 'An offline home session covering practical breathing and meditation techniques.',
+      price: '40.00',
+      sessions: 1,
+      trainerEmail: 'maya.trainer@sattva.test',
       imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=900&q=80',
     },
   ];
@@ -244,6 +297,7 @@ async function main() {
         description: service.description,
         price: service.price,
         sessions: service.sessions,
+        trainerId: trainerByEmail.get(service.trainerEmail)?.id,
         status: 'ACTIVE',
         imageUrl: service.imageUrl,
       },
@@ -253,6 +307,7 @@ async function main() {
         description: service.description,
         price: service.price,
         sessions: service.sessions,
+        trainerId: trainerByEmail.get(service.trainerEmail)?.id,
         imageUrl: service.imageUrl,
         status: 'ACTIVE',
       },

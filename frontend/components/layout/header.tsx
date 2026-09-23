@@ -15,6 +15,7 @@ import { Logo } from "./logo";
 const navigation = [
   { label: "Shop", href: "/products" },
   { label: "Services", href: "/services" },
+  { label: "Trainers", href: "/trainers" },
   { label: "Categories", href: "/categories" },
   { label: "Our story", href: "/about" },
 ];

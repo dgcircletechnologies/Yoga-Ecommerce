@@ -1,60 +1,25 @@
 "use client";
-
 import Image from "next/image";
-import { useState } from "react";
-
-import { PurchaseCustomerForm } from "@/components/purchase/purchase-customer-form";
-import type { CheckoutDetails } from "@/components/checkout/checkout-page";
-import { checkoutDetailsFromUser } from "@/lib/checkout/customer-details";
-import { usdPrice, useCurrency } from "@/context/currency-context";
-import { createOrder } from "@/api/orders.api";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createServiceBooking, type BookingSession } from "@/api/service-bookings.api";
+import { beginPayment, PaymentFlowError } from "@/lib/checkout/payment-service";
 import { useAuth } from "@/hooks/use-auth";
+import { useCurrency, usdPrice } from "@/context/currency-context";
+import { checkoutDetailsFromUser } from "@/lib/checkout/customer-details";
+import type { CheckoutDetails } from "@/components/checkout/checkout-page";
+import { PurchaseCustomerForm } from "@/components/purchase/purchase-customer-form";
 import { PageHero } from "@/components/layout/page-hero";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import type { Service } from "@/types/service";
 
 export function ServiceDetail({ service }: { service: Service }) {
-  const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { formatPrice } = useCurrency();
-  const { currentUser } = useAuth();
-
-  async function submitRequest(values: CheckoutDetails) {
-    const address = [values.address1, values.address2, values.city, values.state, values.postalCode, values.country].filter(Boolean).join(", ");
-    setError(""); setIsSubmitting(true);
-    try { await createOrder({ name: values.name, email: values.email, phone: values.phone, address, city: values.city, state: values.state, country: values.country, postalCode: values.postalCode, currency: "USD", items: [{ type: "SERVICE", serviceId: service.id, quantity: 1 }] }); setIsPurchaseOpen(false); setIsSubmitted(true); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to create your service order."); } finally { setIsSubmitting(false); }
-  }
-
-  return (
-    <>
-      <PageHero title="Service Details" />
-      <main>
-        <Container className="grid gap-12 py-20 sm:py-24 lg:grid-cols-[7fr_3fr] lg:gap-12 lg:py-28">
-          <section>
-            <div className="relative aspect-[6/7] overflow-hidden bg-brand-light-gray"><Image alt={service.name} className="object-cover" fill priority sizes="(max-width: 1024px) 100vw, 70vw" src={service.image} unoptimized /></div>
-            <h1 className="mt-3 text-4xl sm:text-5xl">{service.name}</h1>
-            <p className="mt-6 text-base leading-8 text-brand-gray">{service.details}</p>
-          </section>
-
-          <aside className="h-fit lg:pt-16">
-            <h2 className="text-2xl">Information</h2>
-            <p className="mt-4 text-3xl font-semibold text-brand-dark">{formatPrice(usdPrice(service.price))}</p>
-            <div className="mt-7 bg-brand-purple/5 p-5">
-              <InfoRow label="Sessions" value={service.sessions} />
-              <Button className="mt-5 w-full" disabled={isSubmitting} onClick={() => { setIsSubmitted(false); setIsPurchaseOpen(true); }} type="button">Book this service</Button>
-            </div>
-            {isSubmitted && <p aria-live="polite" className="mt-5 border border-green-200 bg-green-50 px-4 py-3 text-sm leading-6 text-green-700">Your service order has been received. We will contact you with the next steps.</p>}{error && <p className="mt-5 border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">{error}</p>}
-          </aside>
-        </Container>
-      </main>
-      {isPurchaseOpen && <PurchaseCustomerForm description="Share your details and we will follow up to confirm your service request." initialValues={checkoutDetailsFromUser(currentUser)} onClose={() => setIsPurchaseOpen(false)} onContinue={submitRequest} onMemberContinue={() => setIsPurchaseOpen(false)} submitLabel="Submit request" summary={{ kind: "Service", name: service.name, price: formatPrice(usdPrice(service.price)), sessions: service.sessions }} title="Book your service" />}
-    </>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return <p className="flex items-start justify-between gap-4 border-b border-black/10 py-4 text-sm text-brand-dark last:border-0"><span>{label}</span><span className="text-right text-brand-gray">{value}</span></p>;
+  const { currentUser } = useAuth(); const { formatPrice, currency, exchangeRate } = useCurrency(); const router = useRouter(); const [open, setOpen] = useState(false); const [customerOpen, setCustomerOpen] = useState(false); const [quantity, setQuantity] = useState(1); const tomorrow = useMemo(() => { const date = new Date(); date.setDate(date.getDate() + 1); return date.toISOString().slice(0, 10); }, []); const [sessions, setSessions] = useState<BookingSession[]>([{ date: tomorrow, time: "10:00" }]); const [error, setError] = useState(""); const [saving, setSaving] = useState(false);
+  const price = usdPrice(service.price); const total = price * quantity;
+  function changeQuantity(next: number) { const value = Math.max(1, Math.min(12, next)); setQuantity(value); setSessions((current) => Array.from({ length: value }, (_, index) => current[index] ?? { date: tomorrow, time: "10:00" })); }
+  function reviewSchedule() { if (sessions.some((session) => !session.date || !session.time || session.date < tomorrow)) return setError("Choose a date from tomorrow onward and a time for every session."); if (new Set(sessions.map((session) => `${session.date} ${session.time}`)).size !== sessions.length) return setError("Each session must use a different date and time."); setError(""); setOpen(false); setCustomerOpen(true); }
+  async function submitCustomer(values: CheckoutDetails) { setSaving(true); setError(""); try { const booking = await createServiceBooking({ serviceId: service.id, sessions, ...(currentUser ? {} : { name: values.name, email: values.email, phone: values.phone }), address: [values.address1, values.address2].filter(Boolean).join(", "), city: values.city, state: values.state, country: values.country, postalCode: values.postalCode }); sessionStorage.setItem("sattva-payment-email", values.email); sessionStorage.setItem("sattva-payment-currency", JSON.stringify({ currency, exchangeRate })); const result = await beginPayment({ orderId: booking.orderId, email: values.email, currency, exchangeRate }); if (result === "success") router.push(`/checkout/payment?orderId=${encodeURIComponent(booking.orderId)}&status=success`); else router.push(`/checkout/payment?orderId=${encodeURIComponent(booking.orderId)}&status=failed`); } catch (requestError) { const paymentError = requestError as Partial<PaymentFlowError>; if (paymentError.orderId) router.push(`/checkout/payment?orderId=${encodeURIComponent(paymentError.orderId)}&status=failed`); else setError(requestError instanceof Error ? requestError.message : "Unable to create this booking."); } finally { setSaving(false); } }
+  return <><PageHero title="Service Details" /><main><Container className="grid gap-12 py-20 sm:py-24 lg:grid-cols-[7fr_3fr] lg:gap-12 lg:py-28"><section><div className="relative aspect-[6/7] overflow-hidden bg-brand-light-gray"><Image alt={service.name} className="object-cover" fill priority sizes="(max-width: 1024px) 100vw, 70vw" src={service.image} unoptimized /></div><h1 className="mt-3 text-4xl sm:text-5xl">{service.name}</h1><p className="mt-6 text-base leading-8 text-brand-gray">{service.details}</p></section><aside className="h-fit lg:pt-16"><h2 className="text-2xl">Information</h2><p className="mt-4 text-3xl font-semibold text-brand-dark">{formatPrice(price)} / session</p><div className="mt-7 bg-brand-purple/5 p-5"><p className="text-sm font-semibold text-brand-dark">Offline Home Session</p><p className="mt-2 text-sm leading-6 text-brand-gray">Your assigned trainer will visit your home for the selected session.</p>{service.trainer && <Link className="mt-5 flex items-center gap-3 border-t border-black/10 pt-5" href={`/trainers/${service.trainer.id}`}><div className="h-12 w-12 overflow-hidden rounded-full bg-brand-light-gray">{service.trainer.profileImageUrl && <img alt="" className="h-full w-full object-cover" src={service.trainer.profileImageUrl} />}</div><div><p className="text-xs uppercase tracking-[0.12em] text-brand-gray">Trainer</p><p className="font-semibold text-brand-purple">{service.trainer.name}</p>{(service.trainer.specialty || service.trainer.experience) && <p className="mt-1 text-xs text-brand-gray">{[service.trainer.specialty, service.trainer.experience].filter(Boolean).join(" · ")}</p>}</div></Link>}<Button className="mt-5 w-full" onClick={() => setOpen(true)} type="button">Book Session</Button></div></aside></Container></main>{open && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-brand-dark/45 px-5 py-8" role="dialog"><div className="my-auto w-full max-w-2xl bg-white p-7 shadow-brand sm:p-10"><div className="flex items-start justify-between"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-purple">Offline home session</p><h2 className="mt-2 text-3xl">Schedule your sessions</h2></div><button onClick={() => setOpen(false)} type="button">×</button></div><p className="mt-3 text-sm text-brand-gray">Choose your dates and times first. Your contact and address details come next, just like product checkout.</p><div className="mt-6 flex items-center justify-between border-y border-black/10 py-4"><span className="text-sm font-semibold">Number of sessions</span><div className="flex items-center gap-4"><button className="h-9 w-9 border" onClick={() => changeQuantity(quantity - 1)} type="button">−</button><span className="w-5 text-center">{quantity}</span><button className="h-9 w-9 border" onClick={() => changeQuantity(quantity + 1)} type="button">+</button></div></div><div className="mt-6 space-y-4">{sessions.map((session, index) => <div className="grid gap-3 border border-black/10 p-4 sm:grid-cols-2" key={index}><p className="font-semibold sm:col-span-2">Session {index + 1}</p><label className="text-sm">Date<input className="mt-2 h-11 w-full rounded-md border border-black/10 px-3" min={tomorrow} onChange={(event) => setSessions((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, date: event.target.value } : item))} type="date" value={session.date} /></label><label className="text-sm">Time<input className="mt-2 h-11 w-full rounded-md border border-black/10 px-3" onChange={(event) => setSessions((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, time: event.target.value } : item))} type="time" value={session.time} /></label></div>)}</div><div className="mt-6 flex items-center justify-between border-t border-black/10 pt-5"><span className="text-sm">{quantity} × {formatPrice(price)}</span><strong className="text-xl">{formatPrice(total)}</strong></div>{error && <p className="mt-4 text-sm text-red-600" role="alert">{error}</p>}<Button className="mt-6 w-full" onClick={reviewSchedule} type="button">Continue to details</Button></div></div>}{customerOpen && <PurchaseCustomerForm description="Enter your details and service address before continuing to payment." initialValues={checkoutDetailsFromUser(currentUser)} onClose={() => setCustomerOpen(false)} onContinue={submitCustomer} onMemberContinue={() => setCustomerOpen(false)} submitLabel={saving ? "Preparing payment…" : "Proceed to payment"} summary={{ kind: "Service", name: service.name, price: formatPrice(total), sessions: `${quantity} offline home ${quantity === 1 ? "session" : "sessions"}` }} title="Service details" />}{error && !open && <p className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">{error}</p>}</>;
 }

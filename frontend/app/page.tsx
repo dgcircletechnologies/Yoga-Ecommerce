@@ -5,9 +5,11 @@ import { ProductSection } from "@/components/features/home/product-section";
 import { ServicesSection } from "@/components/features/home/services-section";
 import { StatsSection } from "@/components/features/home/stats-section";
 import { TestimonialsSection } from "@/components/features/home/testimonials-section";
+import { TrainersSection } from "@/components/features/home/trainers-section";
 import { getCategories } from "@/api/categories.api";
 import { getPublicProducts } from "@/api/products.api";
 import { getPublicServices } from "@/api/services.api";
+import { getTrainers } from "@/api/trainers.api";
 import { testimonials } from "@/data/mock/testimonials";
 import type { ProductCategory } from "@/types/product";
 
@@ -20,10 +22,11 @@ function resultData<T>(result: PromiseSettledResult<T[]>, filter?: (item: T) => 
 }
 
 export default async function Home() {
-  const [productsResult, categoriesResult, servicesResult] = await Promise.allSettled([
+  const [productsResult, categoriesResult, servicesResult, trainersResult] = await Promise.allSettled([
     getPublicProducts(),
     getCategories(),
     getPublicServices(),
+    getTrainers(),
   ]);
   const comboProductsResult = await Promise.allSettled([getPublicProducts("tag=COMBO")]);
 
@@ -31,6 +34,7 @@ export default async function Home() {
   const comboProducts = resultData(comboProductsResult[0]);
   const categories = resultData(categoriesResult);
   const services = resultData(servicesResult);
+  const trainers = resultData(trainersResult);
   const categoryCards: ProductCategory[] = categories.map((category) => ({
     id: category.id,
     name: category.name,
@@ -48,6 +52,7 @@ export default async function Home() {
       <CategorySection categories={categoryCards} error={categoriesResult.status === "rejected"} />
       <ProductSection products={products} error={productsResult.status === "rejected"} />
       <ServicesSection services={services} error={servicesResult.status === "rejected"} />
+      <TrainersSection trainers={trainers} error={trainersResult.status === "rejected"} />
       <TestimonialsSection testimonials={testimonials} />
     </>
   );

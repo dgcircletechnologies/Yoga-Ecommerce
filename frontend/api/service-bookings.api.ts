@@ -1,0 +1,6 @@
+import { apiRequest } from "./client";
+export type BookingSession = { date: string; time: string };
+export type ServiceBookingInput = { serviceId: string; sessions: BookingSession[]; name?: string; email?: string; phone?: string; address: string; city: string; state: string; country: string; postalCode: string };
+export async function createServiceBooking(data: ServiceBookingInput) { return (await apiRequest<{ success: boolean; data: { id: string; orderId: string; quantity: number; pricePerSession: number; totalAmount: number; status: string; sessions: Array<{ id: string; scheduledAt: string }> } }>("/service-bookings", { method: "POST", body: JSON.stringify(data) })).data; }
+export type ServiceBooking = { id: string; orderId: string; service: { name: string; imageUrl?: string | null }; trainer: { id: string; name: string; profileImageUrl?: string | null }; quantity: number; pricePerSession: number; totalAmount: number; status: string; paymentStatus: string | null; address: { address: string; city: string; state: string; country: string; postalCode: string }; sessions: Array<{ id: string; scheduledAt: string; status: string }> };
+export async function getServiceBookings() { return (await apiRequest<{ success: boolean; data: ServiceBooking[] }>("/service-bookings")).data; }

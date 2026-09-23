@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ArrowIcon } from "@/components/ui/icons";
-import { ProductPrice } from "@/components/features/products/product-price";
 import type { Service } from "@/types/service";
 
 export function ServiceCard({ service }: { service: Service }) {
@@ -15,12 +14,13 @@ export function ServiceCard({ service }: { service: Service }) {
       <div className="px-5 py-7">
         <div className="flex items-start justify-between gap-4 text-brand-dark">
           <span className="text-sm  text-brand-dark">{service.sessions}</span>
-          <ProductPrice className="text-xl font-semibold" price={service.price} />
+          <span className="text-right text-xl font-semibold">{service.price}<small className="block text-[10px] font-normal uppercase tracking-[0.12em] text-brand-gray">/ session</small></span>
         </div>
         <Link className="mt-5 block" href={`/services/${service.id}`}>
           <h3 className="text-2xl transition-colors group-hover:text-brand-purple">{service.name}</h3>
         </Link>
         <p className="mt-3 text-sm leading-6 text-brand-dark">{service.description}</p>
+        <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-purple">Offline Home Session{service.trainer ? ` · ${service.trainer.name}` : ""}</p>
         <Link className="mt-6 inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-purple transition-colors hover:text-brand-dark" href={`/services/${service.id}`}>
           View details <ArrowIcon />
         </Link>

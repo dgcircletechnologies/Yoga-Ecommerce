@@ -36,6 +36,20 @@ export class AuthService {
   async login({ email, password }: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: email.trim().toLowerCase() },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        password: true,
+        role: true,
+        phone: true,
+        address1: true,
+        address2: true,
+        city: true,
+        state: true,
+        country: true,
+        postalCode: true,
+      },
     });
     const validPassword = user?.password
       ? await this.passwords.verify(user.password, password)
@@ -72,6 +86,19 @@ export class AuthService {
           password: passwordHash,
           phone: phone?.trim(),
         },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          phone: true,
+          address1: true,
+          address2: true,
+          city: true,
+          state: true,
+          country: true,
+          postalCode: true,
+        },
       });
 
       return {
@@ -95,7 +122,22 @@ export class AuthService {
   }
 
   async getCurrentUser(id: string): Promise<SafeUser> {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        address1: true,
+        address2: true,
+        city: true,
+        state: true,
+        country: true,
+        postalCode: true,
+      },
+    });
     if (!user)
       throw new UnauthorizedException('Invalid authentication credentials');
     return this.toSafeUser(user);

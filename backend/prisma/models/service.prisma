@@ -4,7 +4,7 @@ model Service {
   slug        String  @unique @db.VarChar(120)
   description String?
 
-  // Price for the complete service/package
+  // Price for one offline/home session
   price Decimal @db.Decimal(10, 2)
 
   // Number of sessions included
@@ -16,14 +16,19 @@ model Service {
   imageUrl String? @db.VarChar(500)
   imagePublicId String? @db.VarChar(255)
 
+  trainerId String?
+  trainer User? @relation("TrainerServices", fields: [trainerId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   orderItems OrderItem[]
+  bookings ServiceBooking[]
 
   @@index([status])
   @@index([createdAt])
   @@index([price])
+  @@index([trainerId])
 }
 
 enum ServiceStatus {

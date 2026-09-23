@@ -1,0 +1,8 @@
+import Link from "next/link";
+import { Container } from "@/components/ui/container";
+import { TrainerCard } from "@/components/features/trainers/trainer-card";
+import type { Trainer } from "@/types/trainer";
+
+export function TrainersSection({ trainers, error = false }: { trainers: Trainer[]; error?: boolean }) {
+  return <section className="bg-brand-light-gray py-20 sm:py-24 lg:py-28"><Container><div className="mb-10 text-center sm:mb-14"><span className="mb-4 inline-block text-sm uppercase tracking-[0.14em] text-brand-purple">Our trainers</span><h2>Guidance for your practice</h2><p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-brand-dark">Meet the experienced trainers who guide you on your yoga and wellness journey.</p></div>{error ? <p className="py-12 text-center text-sm text-brand-gray">Trainers are unavailable right now.</p> : trainers.length === 0 ? <p className="py-12 text-center text-sm text-brand-gray">No trainers are available right now.</p> : <div className="mobile-navigation-scroll -mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">{trainers.map((trainer) => <div className="w-[calc(100vw-2rem)] shrink-0 snap-start sm:w-[calc(50vw-2rem)] lg:w-[calc(25vw-2.5rem)] lg:max-w-[280px]" key={trainer.id}><TrainerCard trainer={trainer} /></div>)}</div>}<div className="mt-12 text-center"><Link className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-purple transition-colors hover:text-brand-dark" href="/trainers">View all trainers <span aria-hidden="true">→</span></Link></div></Container></section>;
+}

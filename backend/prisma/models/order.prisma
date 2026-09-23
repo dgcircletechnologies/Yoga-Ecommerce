@@ -23,6 +23,7 @@ model Order {
 
   items   OrderItem[]
   payment Payment?
+  serviceBooking ServiceBooking?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -30,6 +31,67 @@ model Order {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+model ServiceBooking {
+  id String @id @default(uuid())
+  orderId String @unique
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  serviceId String
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  trainerId String
+  trainer User @relation("TrainerBookings", fields: [trainerId], references: [id], onDelete: Restrict)
+  customerId String
+  customer User @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+  quantity Int
+  pricePerSession Decimal @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
+  status ServiceBookingStatus @default(PENDING_PAYMENT)
+  address String
+  city String
+  state String
+  country String
+  postalCode String
+  otpHash String?
+  otpExpiresAt DateTime?
+  otpVerifiedAt DateTime?
+  sessions ServiceSession[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([trainerId, status])
+  @@index([customerId, createdAt])
+  @@index([serviceId])
+}
+
+model ServiceSession {
+  id String @id @default(uuid())
+  bookingId String
+  booking ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  scheduledAt DateTime
+  status ServiceSessionStatus @default(SCHEDULED)
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookingId, scheduledAt])
+  @@index([scheduledAt])
+  @@index([bookingId, status])
+}
+
+enum ServiceBookingStatus {
+  PENDING_PAYMENT
+  PAID
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum ServiceSessionStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
 }
 
 model OrderItem {

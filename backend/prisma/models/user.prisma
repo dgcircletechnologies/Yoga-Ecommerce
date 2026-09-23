@@ -10,6 +10,14 @@ model User {
 
   role UserRole @default(USER)
 
+  // Trainer/public profile
+  profileUrl           String? @db.VarChar(500)
+  aboutMe             String? @db.VarChar(2000)
+  experience          String? @db.VarChar(100)
+  specialty           String? @db.VarChar(150)
+  profileImageUrl      String? @db.VarChar(500)
+  profileImagePublicId String? @db.VarChar(255)
+
   // Customer address
   address1   String?
   address2   String?
@@ -22,6 +30,9 @@ model User {
   updatedAt DateTime @updatedAt
 
   orders Order[]
+  trainerServices Service[] @relation("TrainerServices")
+  trainerBookings ServiceBooking[] @relation("TrainerBookings")
+  customerBookings ServiceBooking[] @relation("CustomerBookings")
 
   @@index([name])
   @@index([phone])
@@ -30,5 +41,6 @@ model User {
 
 enum UserRole {
   USER
+  TRAINER
   ADMIN
 }

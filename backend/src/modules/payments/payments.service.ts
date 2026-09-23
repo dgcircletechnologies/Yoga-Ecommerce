@@ -6,6 +6,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import type { CreatePaymentOrderDto } from './dto/create-payment-order.dto.js';
 import type { VerifyPaymentDto } from './dto/verify-payment.dto.js';
 import type { FailPaymentDto } from './dto/fail-payment.dto.js';
+import { ServiceBookingsService } from '../service-bookings/service-bookings.service.js';
 
 type User = { id: string; role: string } | undefined;
 const paymentSelect = { id: true, orderId: true, status: true, amount: true, currency: true, razorpayOrderId: true, razorpayPaymentId: true, razorpaySignature: true, transactionId: true, paymentMethod: true, failureReason: true, gatewayMetadata: true, attempt: true, createdAt: true, updatedAt: true, paidAt: true, order: { select: { id: true, userId: true, name: true, email: true, total: true, status: true, createdAt: true } } } as const;
@@ -17,7 +18,7 @@ export class PaymentsService {
   private readonly keySecret: string;
   private readonly webhookSecret?: string;
 
-  constructor(private readonly prisma: PrismaService, config: ConfigService) {
+  constructor(private readonly prisma: PrismaService, config: ConfigService, private readonly serviceBookings: ServiceBookingsService) {
     const keyId = config.get<string>('razorpay.keyId');
     const keySecret = config.get<string>('razorpay.keySecret');
     this.keyId = keyId ?? '';
@@ -58,13 +59,15 @@ export class PaymentsService {
       if (saved.order?.status === 'PENDING') await tx.order.update({ where: { id: payment.orderId }, data: { status: 'CONFIRMED' } });
       return saved;
     });
-    return this.present(saved);
+    const booking = saved.status === 'PAID' ? await this.serviceBookings.markPaid(payment.orderId) : null;
+    return { ...this.present(saved), serviceBooking: booking };
   }
 
   async fail(dto: FailPaymentDto, user: User) {
     const payment = await this.getAccessiblePayment(dto.orderId, user, dto.email);
     if (payment.razorpayOrderId !== dto.razorpayOrderId || payment.status === 'PAID') return this.present(payment);
     const result = await this.prisma.payment.updateMany({ where: { id: payment.id, status: { not: 'PAID' } }, data: { status: 'FAILED', failureReason: dto.reason ?? 'Payment was not completed', gatewayMetadata: { failureSource: 'checkout' } } });
+    if (result.count) await this.serviceBookings.cancelPending(payment.orderId);
     return this.present(result.count ? await this.prisma.payment.findUniqueOrThrow({ where: { id: payment.id }, select: paymentSelect }) : payment);
   }
 
