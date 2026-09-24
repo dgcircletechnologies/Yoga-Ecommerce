@@ -10,6 +10,7 @@ import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { PasswordService } from './password.service.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { PasswordService } from './password.service.js';
     PasswordService,
     JwtStrategy,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AuthModule {}

@@ -1,8 +1,10 @@
 import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CreateServiceBookingDto } from './dto/create-service-booking.dto.js';
+import { ConfirmTrainerBookingDto } from './dto/confirm-trainer-booking.dto.js';
 import { UpdateServiceBookingStatusDto } from './dto/update-service-booking-status.dto.js';
 import { ServiceBookingsService } from './service-bookings.service.js';
 
@@ -21,6 +23,24 @@ export class ServiceBookingsController {
   adminGet(@CurrentUser() user: { role: string }, @Param('id') id: string) { this.requireAdmin(user); return this.bookings.adminGet(id).then((data) => ({ success: true, data })); }
   @Patch('admin/:id/status')
   adminStatus(@CurrentUser() user: { role: string }, @Param('id') id: string, @Body() dto: UpdateServiceBookingStatusDto) { this.requireAdmin(user); return this.bookings.updateStatus(id, dto.status).then((data) => ({ success: true, data })); }
+  @Roles('TRAINER')
+  @Get('trainer/dashboard')
+  trainerDashboard(@CurrentUser() user: { id: string }) { return this.bookings.trainerDashboard(user.id).then((data) => ({ success: true, data })); }
+  @Roles('TRAINER')
+  @Get('trainer/bookings/pending')
+  trainerPending(@CurrentUser() user: { id: string }) { return this.bookings.trainerBookings(user.id, 'pending').then((data) => ({ success: true, data })); }
+  @Roles('TRAINER')
+  @Get('trainer/bookings/history')
+  trainerHistory(@CurrentUser() user: { id: string }, @Query() query: { page?: string; limit?: string; status?: string; date?: string; search?: string }) { return this.bookings.trainerHistory(user.id, query).then((data) => ({ success: true, data })); }
+  @Roles('TRAINER')
+  @Get('trainer/bookings/:id')
+  trainerGet(@CurrentUser() user: { id: string }, @Param('id') id: string) { return this.bookings.trainerBooking(user.id, id).then((data) => ({ success: true, data })); }
+  @Roles('TRAINER')
+  @Post('trainer/bookings/:bookingId/verify-otp')
+  trainerConfirm(@CurrentUser() user: { id: string }, @Param('bookingId') bookingId: string, @Body() dto: ConfirmTrainerBookingDto) { return this.bookings.confirmTrainerBooking(user.id, bookingId, dto.otp).then((booking) => ({ success: true, message: 'Booking confirmed successfully', booking })); }
+  @Roles('TRAINER')
+  @Get('trainer/bookings')
+  trainerList(@CurrentUser() user: { id: string }) { return this.bookings.trainerBookings(user.id).then((data) => ({ success: true, data })); }
   @Get() list(@CurrentUser() user: { id: string }) { return this.bookings.listForCustomer(user.id).then((data) => ({ success: true, data })); }
   @Get(':id') get(@CurrentUser() user: { id: string; role: string }, @Param('id') id: string) { return this.bookings.get(id, user).then((data) => ({ success: true, data })); }
   private requireAdmin(user: { role: string }) { if (user.role !== 'ADMIN') throw new ForbiddenException('Admin access required'); }

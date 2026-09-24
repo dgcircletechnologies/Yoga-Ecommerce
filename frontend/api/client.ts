@@ -1,4 +1,4 @@
-import { getToken } from "@/utils/auth";
+import { getToken, removeToken } from "@/utils/auth";
 
 const PUBLIC_API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1").replace(/\/$/, "");
 const SERVER_API_URL = (process.env.INTERNAL_API_URL ?? PUBLIC_API_URL).replace(/\/$/, "");
@@ -23,6 +23,11 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
     ...options,
     headers,
   });
+
+  if (response.status === 401 && typeof window !== "undefined") {
+    removeToken();
+    window.dispatchEvent(new Event("auth:expired"));
+  }
 
   const body = await response.json().catch(() => null) as T & ApiError | null;
   if (!response.ok) {

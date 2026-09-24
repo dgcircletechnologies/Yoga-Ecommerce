@@ -12,4 +12,14 @@ export type Trainer = {
   role: "TRAINER";
   createdAt: string;
   updatedAt?: string;
+  services?: TrainerService[];
+};
+
+export type TrainerService = {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  sessions: number;
+  imageUrl?: string | null;
 };

@@ -53,8 +53,13 @@ model ServiceBooking {
   country String
   postalCode String
   otpHash String?
+  otp String?
+  otpEncrypted String?
   otpExpiresAt DateTime?
   otpVerifiedAt DateTime?
+  otpAttempts Int @default(0)
+  otpBlockedUntil DateTime?
+  verifiedBy String?
   sessions ServiceSession[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -81,6 +86,8 @@ model ServiceSession {
 
 enum ServiceBookingStatus {
   PENDING_PAYMENT
+  PENDING
+  CONFIRMED
   PAID
   SCHEDULED
   COMPLETED

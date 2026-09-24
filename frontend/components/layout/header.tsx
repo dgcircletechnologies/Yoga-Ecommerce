@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { CurrencySelector } from "./currency-selector";
 
 import { Logo } from "./logo";
+import { roleHome } from "@/utils/role-routes";
 
 const navigation = [
   { label: "Shop", href: "/products" },
@@ -27,6 +28,7 @@ export function Header() {
   const { currentUser, isAuthenticated, isLoading: authLoading, logout, refreshSession } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const isTrainerPage = pathname === "/trainers" || pathname.startsWith("/trainers/");
 
   const isActive = (href: string) => href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
@@ -48,16 +50,16 @@ export function Header() {
   }, [isMobileMenuOpen]);
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
-  const logoHref = currentUser?.role === "ADMIN" ? "/admin" : "/";
+  const logoHref = roleHome(currentUser?.role);
   async function handleLogoClick(event: MouseEvent<HTMLAnchorElement>) {
     if (!authLoading) return;
     event.preventDefault();
     const user = await refreshSession();
-    router.push(user?.role === "ADMIN" ? "/admin" : "/");
+    router.push(roleHome(user?.role));
   }
 
   return (
-    <header className={`fixed inset-x-0 top-0 z-20 border-b text-white transition-colors duration-300 ${isScrolled ? "border-brand-purple bg-brand-purple" : "border-white/20 bg-brand-dark/35 backdrop-blur-[2px]"}`}>
+    <header className={`fixed inset-x-0 top-0 z-20 border-b text-white transition-colors duration-300 ${isScrolled || isTrainerPage ? "border-brand-purple bg-brand-purple" : "border-white/20 bg-brand-dark/35 backdrop-blur-[2px]"}`}>
       <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
         <Logo href={logoHref} onClick={handleLogoClick} inverted />
         <nav aria-label="Main navigation" className="hidden items-center gap-8 text-[11px] font-semibold uppercase tracking-[0.18em] lg:flex">

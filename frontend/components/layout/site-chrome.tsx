@@ -8,9 +8,9 @@ import { Header } from "./header";
 
 export function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isAdminRoute = pathname.startsWith("/admin");
+  const isStaffRoute = pathname === "/admin" || pathname.startsWith("/admin/") || pathname === "/trainer" || pathname.startsWith("/trainer/");
 
-  if (isAdminRoute) return <>{children}</>;
+  if (isStaffRoute) return <>{children}</>;
 
   return <><Header /><div className="flex-1">{children}</div><Footer /></>;
 }

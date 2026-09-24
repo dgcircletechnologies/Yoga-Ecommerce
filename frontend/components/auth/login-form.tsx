@@ -7,6 +7,7 @@ import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { useAuth } from "@/hooks/use-auth";
+import { roleHome } from "@/utils/role-routes";
 
 type LoginValues = {
   email: string;
@@ -59,7 +60,7 @@ export function LoginForm() {
     setIsSubmitting(true);
     try {
       const user = await login(values.email, values.password);
-      router.replace(user.role === "ADMIN" ? "/admin" : "/");
+      router.replace(roleHome(user.role));
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to log in. Please try again.");
       setIsSubmitting(false);

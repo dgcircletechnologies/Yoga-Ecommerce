@@ -46,7 +46,7 @@ export class PaymentsService {
 
   async verify(dto: VerifyPaymentDto, user: User) {
     const payment = await this.getAccessiblePayment(dto.orderId, user, dto.email);
-    if (payment.status === 'PAID') return this.present(payment);
+    if (payment.status === 'PAID') return { ...this.present(payment), serviceBooking: await this.serviceBookings.markPaid(payment.orderId) };
     if (payment.razorpayOrderId !== dto.razorpayOrderId) throw new ConflictException('Payment order does not match the application order');
     this.verifySignature(dto.razorpayOrderId, dto.razorpayPaymentId, dto.razorpaySignature);
     let gatewayPayment: { amount: number | string; currency: string; method?: string; status?: string };
@@ -88,7 +88,7 @@ export class PaymentsService {
     return { received: true };
   }
 
-  async findForUser(id: string, user: User, email?: string) { return this.present(await this.getAccessiblePayment(id, user, email)); }
+  async findForUser(id: string, user: User, email?: string) { const payment = await this.getAccessiblePayment(id, user, email); const booking = await this.prisma.serviceBooking.findUnique({ where: { orderId: payment.orderId }, select: { id: true, status: true, service: { select: { name: true } }, sessions: { select: { id: true, scheduledAt: true }, orderBy: { scheduledAt: 'asc' } } } }); return { ...this.present(payment), serviceBooking: booking ? { bookingId: booking.id, status: booking.status, serviceName: booking.service.name, sessions: booking.sessions } : null }; }
 
   async findAll(status?: string, search?: string) {
     const payments = await this.prisma.payment.findMany({ where: { ...(status ? { status: status as never } : {}), ...(search ? { OR: [{ id: { contains: search, mode: 'insensitive' } }, { orderId: { contains: search, mode: 'insensitive' } }, { order: { is: { name: { contains: search, mode: 'insensitive' } } } }, { order: { is: { email: { contains: search, mode: 'insensitive' } } } }] } : {}) }, orderBy: { createdAt: 'desc' }, select: paymentSelect }); return payments.map((payment) => this.present(payment));

@@ -10,7 +10,7 @@ import { CustomerSearch } from "@/components/admin/customers/customer-search";
 import { Container } from "@/components/ui/container";
 
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-const date = (value: string) => new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+const date = (value: string) => new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(value));
 const labels = [["Total Bookings", "total"], ["Pending", "pending"], ["Confirmed", "scheduled"], ["Upcoming Sessions", "upcoming"], ["Completed", "completed"], ["Cancelled", "cancelled"]] as const;
 const statusLabels: Record<string, string> = { PENDING_PAYMENT: "Pending", SCHEDULED: "Confirmed", COMPLETED: "Completed", CANCELLED: "Cancelled" };
 
