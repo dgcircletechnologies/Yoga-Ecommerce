@@ -13,6 +13,7 @@ export type TrainerBooking = {
   status: "PENDING" | "PAID" | "CONFIRMED" | "SCHEDULED" | "COMPLETED" | "CANCELLED" | string;
   otpVerified: boolean;
   verifiedAt: string | null;
+  sceneImages: Array<{ imageUrl: string; imagePublicId: string }>;
   sessions: Array<{ id: string; scheduledAt: string; status: string }>;
   createdAt: string;
   updatedAt: string;
@@ -53,6 +54,9 @@ export async function getTrainerBooking(id: string) {
   return (await apiRequest<Response<TrainerBooking>>(`/service-bookings/trainer/bookings/${encodeURIComponent(id)}`)).data;
 }
 
-export async function verifyTrainerBookingOtp(id: string, otp: string) {
-  return (await apiRequest<{ success: boolean; message: string; booking: { id: string; status: string; verifiedAt: string | null } }>(`/service-bookings/trainer/bookings/${encodeURIComponent(id)}/verify-otp`, { method: "POST", body: JSON.stringify({ otp }) })).booking;
+export async function verifyTrainerBookingOtp(id: string, otp: string, sceneImages: File[] = []) {
+  const formData = new FormData();
+  formData.append("otp", otp);
+  sceneImages.forEach((image) => formData.append("sceneImages", image));
+  return (await apiRequest<{ success: boolean; message: string; booking: { id: string; status: string; verifiedAt: string | null; sceneImages: TrainerBooking["sceneImages"] } }>(`/service-bookings/trainer/bookings/${encodeURIComponent(id)}/verify-otp`, { method: "POST", body: formData })).booking;
 }

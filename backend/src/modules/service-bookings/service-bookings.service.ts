@@ -2,11 +2,12 @@ import { BadRequestException, ConflictException, HttpException, HttpStatus, Inje
 import { ConfigService } from '@nestjs/config';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { PrismaService } from '../../database/prisma.service.js';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service.js';
 import type { CreateServiceBookingDto } from './dto/create-service-booking.dto.js';
 
 @Injectable()
 export class ServiceBookingsService {
-  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService, private readonly cloudinary: CloudinaryService) {}
 
   async create(customerId: string | undefined, dto: CreateServiceBookingDto) {
     const service = await this.prisma.service.findUnique({ where: { id: dto.serviceId }, include: { trainer: true } });
@@ -48,6 +49,7 @@ export class ServiceBookingsService {
       await tx.payment.create({ data: { orderId: order.id, amount: total, currency: 'USD' } });
       return tx.serviceBooking.create({ data: { orderId: order.id, serviceId: service.id, trainerId, customerId: user.id, quantity, pricePerSession: service.price, totalAmount: total, address: dto.address, city: dto.city, state: dto.state, country: dto.country, postalCode: dto.postalCode, sessions: { create: slots.map((scheduledAt) => ({ scheduledAt })) } }, include: { sessions: true } });
     });
+    await this.prisma.serviceBookingAction.create({ data: { bookingId: booking.id, action: 'BOOKING_CREATED', actorType: customerId ? 'CUSTOMER' : 'SYSTEM', performedBy: customerId, description: 'Service booking created and sessions scheduled.' } });
     return { id: booking.id, orderId: booking.orderId, quantity: booking.quantity, pricePerSession: Number(booking.pricePerSession), totalAmount: Number(booking.totalAmount), status: booking.status, sessions: booking.sessions };
   }
 
@@ -92,7 +94,7 @@ export class ServiceBookingsService {
     return this.presentTrainer(row);
   }
 
-  async confirmTrainerBooking(trainerId: string, id: string, otp: string) {
+  async confirmTrainerBooking(trainerId: string, id: string, otp: string, files: Express.Multer.File[] = []) {
     const row = await this.prisma.serviceBooking.findFirst({ where: { id, trainerId }, select: { id: true, status: true, otpHash: true, otpExpiresAt: true, otpAttempts: true, otpBlockedUntil: true, otpVerifiedAt: true } });
     if (!row) throw new NotFoundException('Trainer booking not found');
     if (row.status !== 'PENDING' || row.otpVerifiedAt) throw new ConflictException('Only pending bookings can be confirmed');
@@ -106,11 +108,24 @@ export class ServiceBookingsService {
       await this.prisma.serviceBooking.update({ where: { id: row.id }, data: { otpAttempts: attempts, otpBlockedUntil: attempts >= 5 ? new Date(now.getTime() + 15 * 60 * 1000) : null } });
       throw new BadRequestException('Invalid verification code');
     }
-    const claimed = await this.prisma.serviceBooking.updateMany({ where: { id: row.id, trainerId, status: 'PENDING', otpVerifiedAt: null }, data: { status: 'CONFIRMED', otpVerifiedAt: now, verifiedBy: trainerId, otpBlockedUntil: null } });
-    if (!claimed.count) throw new ConflictException('This booking has already been confirmed');
-    await this.prisma.serviceSession.updateMany({ where: { bookingId: row.id, status: 'SCHEDULED' }, data: { status: 'CONFIRMED' } });
-    const updated = await this.prisma.serviceBooking.findUniqueOrThrow({ where: { id: row.id }, select: { id: true, status: true, otpVerifiedAt: true } });
-    return { id: updated.id, status: updated.status, verifiedAt: updated.otpVerifiedAt };
+    const uploaded: Array<{ imageUrl: string; imagePublicId: string; uploadedAt: string }> = [];
+    try {
+      for (const file of files) {
+        const result = await this.cloudinary.uploadImage(file, `bookings/scene-images/${row.id}`);
+        uploaded.push({ imageUrl: result.secure_url, imagePublicId: result.public_id, uploadedAt: new Date().toISOString() });
+      }
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const claimed = await tx.serviceBooking.updateMany({ where: { id: row.id, trainerId, status: 'PENDING', otpVerifiedAt: null }, data: { status: 'CONFIRMED', otpVerifiedAt: now, verifiedBy: trainerId, otpBlockedUntil: null, sceneImages: uploaded, imageReviewStatus: uploaded.length ? 'PENDING' : 'NOT_UPLOADED' } });
+        if (!claimed.count) throw new ConflictException('This booking has already been confirmed');
+        await tx.serviceSession.updateMany({ where: { bookingId: row.id, status: 'SCHEDULED' }, data: { status: 'CONFIRMED' } });
+        await tx.serviceBookingAction.create({ data: { bookingId: row.id, action: 'TRAINER_CONFIRMED', performedBy: trainerId, actorType: 'TRAINER', description: uploaded.length ? `Booking confirmed through OTP verification with ${uploaded.length} scene image${uploaded.length === 1 ? '' : 's'} uploaded.` : 'Booking confirmed through OTP verification without scene images.' } });
+        return tx.serviceBooking.findUniqueOrThrow({ where: { id: row.id }, select: { id: true, status: true, otpVerifiedAt: true, sceneImages: true } });
+      });
+      return { id: updated.id, status: updated.status, verifiedAt: updated.otpVerifiedAt, sceneImages: updated.sceneImages };
+    } catch (error) {
+      await Promise.all(uploaded.map((image) => this.cleanupImage(image.imagePublicId)));
+      throw error;
+    }
   }
 
   async trainerDashboard(trainerId: string) {
@@ -137,7 +152,7 @@ export class ServiceBookingsService {
     });
   }
 
-  async adminList(query: { page?: string; limit?: string; search?: string; status?: string; paymentStatus?: string; serviceId?: string; trainerId?: string; date?: string; upcoming?: string }) {
+  async adminList(query: { page?: string; limit?: string; search?: string; status?: string; paymentStatus?: string; serviceId?: string; trainerId?: string; date?: string; upcoming?: string; trainerConfirmation?: string; imageReviewStatus?: string; adminReviewStatus?: string; sort?: string }) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 10));
     const search = query.search?.trim();
@@ -145,20 +160,23 @@ export class ServiceBookingsService {
       ...(query.status ? { status: query.status } : {}),
       ...(query.serviceId ? { serviceId: query.serviceId } : {}),
       ...(query.trainerId ? { trainerId: query.trainerId } : {}),
+      ...(query.trainerConfirmation === 'confirmed' ? { otpVerifiedAt: { not: null } } : query.trainerConfirmation === 'pending' ? { status: 'PENDING', otpVerifiedAt: null } : {}),
+      ...(query.imageReviewStatus ? { imageReviewStatus: query.imageReviewStatus } : {}),
+      ...(query.adminReviewStatus ? { adminReviewStatus: query.adminReviewStatus } : {}),
       ...(query.paymentStatus ? { order: { payment: { status: query.paymentStatus } } } : {}),
       ...(search ? { OR: [{ id: { contains: search, mode: 'insensitive' } }, { order: { is: { name: { contains: search, mode: 'insensitive' } } } }, { order: { is: { email: { contains: search, mode: 'insensitive' } } } }, { service: { is: { name: { contains: search, mode: 'insensitive' } } } }, { trainer: { is: { name: { contains: search, mode: 'insensitive' } } } }] } : {}),
       ...(query.date ? { sessions: { some: { scheduledAt: { gte: new Date(`${query.date}T00:00:00`), lt: new Date(`${query.date}T23:59:59.999`) } } } } : {}),
       ...(query.upcoming === 'true' ? { sessions: { some: { scheduledAt: { gte: new Date() }, status: { not: 'CANCELLED' } } } } : {}),
     };
     const [rows, total] = await Promise.all([
-      this.prisma.serviceBooking.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: 'desc' }, include: this.adminInclude }),
+      this.prisma.serviceBooking.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: query.sort === 'oldest' ? { createdAt: 'asc' as const } : { updatedAt: 'desc' as const }, include: this.adminInclude }),
       this.prisma.serviceBooking.count({ where }),
     ]);
     return { items: rows.map((row) => this.presentAdmin(row)), pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) } };
   }
 
   async adminStats() {
-    const [total, pending, scheduled, completed, cancelled, revenue, upcoming] = await Promise.all([
+    const [total, pending, scheduled, completed, cancelled, revenue, upcoming, trainerPending, trainerConfirmed, reviewPending, imagesUploaded, approved, rejected] = await Promise.all([
       this.prisma.serviceBooking.count(),
       this.prisma.serviceBooking.count({ where: { status: { in: ['PENDING_PAYMENT', 'PENDING'] } } }),
       this.prisma.serviceBooking.count({ where: { status: { in: ['CONFIRMED', 'SCHEDULED'] } } }),
@@ -166,8 +184,14 @@ export class ServiceBookingsService {
       this.prisma.serviceBooking.count({ where: { status: 'CANCELLED' } }),
       this.prisma.serviceBooking.aggregate({ _sum: { totalAmount: true }, where: { order: { payment: { status: 'PAID' } } } }),
       this.prisma.serviceSession.count({ where: { scheduledAt: { gte: new Date() }, status: { not: 'CANCELLED' }, booking: { status: { not: 'CANCELLED' } } } }),
+      this.prisma.serviceBooking.count({ where: { status: 'PENDING', otpVerifiedAt: null } }),
+      this.prisma.serviceBooking.count({ where: { status: { not: 'CANCELLED' }, otpVerifiedAt: { not: null } } }),
+      this.prisma.serviceBooking.count({ where: { adminReviewStatus: 'PENDING', otpVerifiedAt: { not: null } } }),
+      this.prisma.serviceBooking.count({ where: { imageReviewStatus: { in: ['PENDING', 'REVIEWED', 'REJECTED'] } } }),
+      this.prisma.serviceBooking.count({ where: { adminReviewStatus: 'APPROVED' } }),
+      this.prisma.serviceBooking.count({ where: { adminReviewStatus: 'REJECTED' } }),
     ]);
-    return { total, pending, scheduled, upcoming, completed, cancelled, revenue: Number(revenue._sum.totalAmount ?? 0) };
+    return { total, pending, scheduled, upcoming, completed, cancelled, revenue: Number(revenue._sum.totalAmount ?? 0), trainerPending, trainerConfirmed, reviewPending, imagesUploaded, approved, rejected };
   }
 
   async adminGet(id: string) {
@@ -176,19 +200,66 @@ export class ServiceBookingsService {
     return this.presentAdmin(row);
   }
 
-  async updateStatus(id: string, status: string) {
+  async adminHistory(id: string) {
+    await this.ensureBooking(id);
+    return this.prisma.serviceBookingAction.findMany({ where: { bookingId: id }, orderBy: { performedAt: 'desc' } });
+  }
+
+  async adminHistoryList(page = 1, limit = 20) {
+    const safePage = Math.max(1, page); const safeLimit = Math.min(50, Math.max(1, limit));
+    const [items, total] = await Promise.all([
+      this.prisma.serviceBookingAction.findMany({ skip: (safePage - 1) * safeLimit, take: safeLimit, orderBy: { performedAt: 'desc' }, include: { booking: { select: { id: true, service: { select: { name: true } } } } } }),
+      this.prisma.serviceBookingAction.count(),
+    ]);
+    return { items, pagination: { page: safePage, limit: safeLimit, total, totalPages: Math.max(1, Math.ceil(total / safeLimit)) } };
+  }
+
+  async reviewBooking(id: string, adminId: string, decision: 'APPROVED' | 'REJECTED', reason?: string) {
+    if (decision === 'REJECTED' && !reason?.trim()) throw new BadRequestException('A rejection reason is required');
+    const current = await this.ensureBooking(id);
+    if (!current.otpVerifiedAt) throw new ConflictException('Trainer confirmation is required before admin review');
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.serviceBooking.update({ where: { id }, data: { adminReviewStatus: decision, adminReviewedAt: now, adminReviewedBy: adminId, adminRejectionReason: decision === 'REJECTED' ? reason!.trim() : null }, include: this.adminInclude });
+      await tx.serviceBookingAction.create({ data: { bookingId: id, action: decision === 'APPROVED' ? 'ADMIN_APPROVED' : 'ADMIN_REJECTED', performedBy: adminId, actorType: 'ADMIN', description: decision === 'APPROVED' ? 'Trainer confirmation and uploaded evidence approved by admin.' : `Booking rejected by admin: ${reason!.trim()}`, metadata: decision === 'REJECTED' ? { reason: reason!.trim() } : undefined } });
+      return row;
+    });
+    return this.presentAdmin(updated);
+  }
+
+  async reviewImages(id: string, adminId: string, decision: 'REVIEWED' | 'REJECTED', reason?: string) {
+    if (decision === 'REJECTED' && !reason?.trim()) throw new BadRequestException('A rejection reason is required');
+    const current = await this.ensureBooking(id);
+    if (!Array.isArray(current.sceneImages) || current.sceneImages.length === 0) throw new ConflictException('This booking has no trainer images to review');
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.serviceBooking.update({ where: { id }, data: { imageReviewStatus: decision, imageReviewedAt: new Date(), imageReviewedBy: adminId, imageRejectionReason: decision === 'REJECTED' ? reason!.trim() : null }, include: this.adminInclude });
+      await tx.serviceBookingAction.create({ data: { bookingId: id, action: decision === 'REVIEWED' ? 'IMAGES_REVIEWED' : 'IMAGES_REJECTED', performedBy: adminId, actorType: 'ADMIN', description: decision === 'REVIEWED' ? 'Trainer-uploaded images marked as reviewed.' : `Trainer-uploaded images rejected: ${reason!.trim()}`, metadata: decision === 'REJECTED' ? { reason: reason!.trim() } : undefined } });
+      return row;
+    });
+    return this.presentAdmin(updated);
+  }
+
+  async updateStatus(id: string, status: string, adminId?: string) {
     try {
-      return this.presentAdmin(await this.prisma.serviceBooking.update({ where: { id }, data: { status: status as never }, include: this.adminInclude }));
+      const updated = await this.prisma.serviceBooking.update({ where: { id }, data: { status: status as never }, include: this.adminInclude });
+      if (adminId) await this.prisma.serviceBookingAction.create({ data: { bookingId: id, action: 'STATUS_CHANGED', performedBy: adminId, actorType: 'ADMIN', description: `Booking status changed to ${status}.` } });
+      return this.presentAdmin(updated);
     } catch { throw new NotFoundException('Service booking not found'); }
+  }
+
+  private async ensureBooking(id: string) {
+    const row = await this.prisma.serviceBooking.findUnique({ where: { id }, select: { id: true, otpVerifiedAt: true, sceneImages: true } });
+    if (!row) throw new NotFoundException('Service booking not found');
+    return row;
   }
 
   private readonly adminInclude = { service: true, trainer: { select: { id: true, name: true, email: true, phone: true, profileImageUrl: true, specialty: true, experience: true } }, sessions: { orderBy: { scheduledAt: 'asc' as const } }, order: { include: { payment: true } } } as const;
 
   private readonly trainerInclude = { service: { select: { id: true, name: true, imageUrl: true } }, customer: { select: { id: true, name: true, email: true, phone: true } }, sessions: { orderBy: { scheduledAt: 'asc' as const } }, order: { select: { payment: { select: { status: true } } } } } as const;
 
-  private presentAdmin(row: any) { return { id: row.id, orderId: row.orderId, service: row.service ? { id: row.service.id, name: row.service.name, description: row.service.description, price: Number(row.service.price), imageUrl: row.service.imageUrl } : null, trainer: row.trainer, customer: { id: row.customerId, name: row.order?.name, email: row.order?.email, phone: row.order?.phone, address: row.order ? { address: row.order.address, city: row.order.city, state: row.order.state, country: row.order.country, postalCode: row.order.postalCode } : null }, quantity: row.quantity, pricePerSession: Number(row.pricePerSession), totalAmount: Number(row.totalAmount), status: row.status, payment: row.order?.payment ? { id: row.order.payment.id, status: row.order.payment.status, amount: Number(row.order.payment.amount), currency: row.order.payment.currency, paymentMethod: row.order.payment.paymentMethod, paidAt: row.order.payment.paidAt } : null, sessions: row.sessions, createdAt: row.createdAt, updatedAt: row.updatedAt }; }
+  private presentAdmin(row: any) { return { id: row.id, orderId: row.orderId, service: row.service ? { id: row.service.id, name: row.service.name, description: row.service.description, price: Number(row.service.price), imageUrl: row.service.imageUrl } : null, trainer: row.trainer, customer: { id: row.customerId, name: row.order?.name, email: row.order?.email, phone: row.order?.phone, address: row.order ? { address: row.order.address, city: row.order.city, state: row.order.state, country: row.order.country, postalCode: row.order.postalCode } : null }, quantity: row.quantity, pricePerSession: Number(row.pricePerSession), totalAmount: Number(row.totalAmount), status: row.status, trainerConfirmationStatus: row.otpVerifiedAt ? 'CONFIRMED' : 'PENDING', trainerConfirmedAt: row.otpVerifiedAt, trainerConfirmedBy: row.verifiedBy, imageReviewStatus: row.imageReviewStatus ?? (Array.isArray(row.sceneImages) && row.sceneImages.length ? 'PENDING' : 'NOT_UPLOADED'), adminReviewStatus: row.adminReviewStatus ?? 'PENDING', adminReviewedAt: row.adminReviewedAt, adminReviewedBy: row.adminReviewedBy, adminRejectionReason: row.adminRejectionReason, sceneImages: Array.isArray(row.sceneImages) ? row.sceneImages : [], payment: row.order?.payment ? { id: row.order.payment.id, status: row.order.payment.status, amount: Number(row.order.payment.amount), currency: row.order.payment.currency, paymentMethod: row.order.payment.paymentMethod, paidAt: row.order.payment.paidAt } : null, sessions: row.sessions, createdAt: row.createdAt, updatedAt: row.updatedAt }; }
 
-  private presentTrainer(row: any) { return { id: row.id, orderId: row.orderId, customer: row.customer, service: row.service, address: { address: row.address, city: row.city, state: row.state, country: row.country, postalCode: row.postalCode }, quantity: row.quantity, pricePerSession: Number(row.pricePerSession), totalAmount: Number(row.totalAmount), paymentStatus: row.order?.payment?.status ?? null, status: row.status, otpVerified: Boolean(row.otpVerifiedAt), verifiedAt: row.otpVerifiedAt, sessions: row.sessions, createdAt: row.createdAt, updatedAt: row.updatedAt }; }
+  private presentTrainer(row: any) { return { id: row.id, orderId: row.orderId, customer: row.customer, service: row.service, address: { address: row.address, city: row.city, state: row.state, country: row.country, postalCode: row.postalCode }, quantity: row.quantity, pricePerSession: Number(row.pricePerSession), totalAmount: Number(row.totalAmount), paymentStatus: row.order?.payment?.status ?? null, status: row.status, otpVerified: Boolean(row.otpVerifiedAt), verifiedAt: row.otpVerifiedAt, sceneImages: row.sceneImages ?? [], sessions: row.sessions, createdAt: row.createdAt, updatedAt: row.updatedAt }; }
 
   private toDate(date: string, time: string) {
     // Treat the selected wall-clock value as a fixed UTC value. No browser
@@ -202,4 +273,5 @@ export class ServiceBookingsService {
   private encryptionKey() { return createHash('sha256').update(this.config.getOrThrow<string>('jwtSecret')).digest(); }
   private encryptOtp(otp: string) { const iv = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', this.encryptionKey(), iv); const encrypted = Buffer.concat([cipher.update(otp, 'utf8'), cipher.final()]); return `${iv.toString('base64url')}.${cipher.getAuthTag().toString('base64url')}.${encrypted.toString('base64url')}`; }
   private decryptOtp(value: string) { try { const [ivValue, tagValue, encryptedValue] = value.split('.'); const decipher = createDecipheriv('aes-256-gcm', this.encryptionKey(), Buffer.from(ivValue, 'base64url')); decipher.setAuthTag(Buffer.from(tagValue, 'base64url')); return Buffer.concat([decipher.update(Buffer.from(encryptedValue, 'base64url')), decipher.final()]).toString('utf8'); } catch { return null; } }
+  private async cleanupImage(publicId: string) { try { await this.cloudinary.deleteImage(publicId); } catch { /* preserve the original confirmation/upload error */ } }
 }

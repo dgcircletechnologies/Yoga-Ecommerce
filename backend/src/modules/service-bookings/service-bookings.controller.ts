@@ -1,4 +1,5 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -7,6 +8,9 @@ import { CreateServiceBookingDto } from './dto/create-service-booking.dto.js';
 import { ConfirmTrainerBookingDto } from './dto/confirm-trainer-booking.dto.js';
 import { UpdateServiceBookingStatusDto } from './dto/update-service-booking-status.dto.js';
 import { ServiceBookingsService } from './service-bookings.service.js';
+import { imageUploadOptions } from '../../common/image-upload.js';
+
+const MAX_SCENE_IMAGES = 6;
 
 @Controller('service-bookings') @ApiTags('service-bookings') @ApiBearerAuth()
 export class ServiceBookingsController {
@@ -16,13 +20,21 @@ export class ServiceBookingsController {
   @Post()
   create(@CurrentUser() user: { id: string } | undefined, @Body() dto: CreateServiceBookingDto) { return this.bookings.create(user?.id, dto).then((data) => ({ success: true, data })); }
   @Get('admin')
-  adminList(@CurrentUser() user: { role: string }, @Query() query: { page?: string; limit?: string; search?: string; status?: string; paymentStatus?: string; serviceId?: string; trainerId?: string; date?: string; upcoming?: string }) { this.requireAdmin(user); return this.bookings.adminList(query).then((data) => ({ success: true, data })); }
+  adminList(@CurrentUser() user: { role: string }, @Query() query: { page?: string; limit?: string; search?: string; status?: string; paymentStatus?: string; serviceId?: string; trainerId?: string; date?: string; upcoming?: string; trainerConfirmation?: string; imageReviewStatus?: string; adminReviewStatus?: string; sort?: string }) { this.requireAdmin(user); return this.bookings.adminList(query).then((data) => ({ success: true, data })); }
   @Get('admin/stats')
   adminStats(@CurrentUser() user: { role: string }) { this.requireAdmin(user); return this.bookings.adminStats().then((data) => ({ success: true, data })); }
+  @Get('admin/history')
+  adminHistoryList(@CurrentUser() user: { role: string }, @Query() query: { page?: string; limit?: string }) { this.requireAdmin(user); return this.bookings.adminHistoryList(Number(query.page) || 1, Number(query.limit) || 20).then((data) => ({ success: true, data })); }
   @Get('admin/:id')
   adminGet(@CurrentUser() user: { role: string }, @Param('id') id: string) { this.requireAdmin(user); return this.bookings.adminGet(id).then((data) => ({ success: true, data })); }
   @Patch('admin/:id/status')
-  adminStatus(@CurrentUser() user: { role: string }, @Param('id') id: string, @Body() dto: UpdateServiceBookingStatusDto) { this.requireAdmin(user); return this.bookings.updateStatus(id, dto.status).then((data) => ({ success: true, data })); }
+  adminStatus(@CurrentUser() user: { id: string; role: string }, @Param('id') id: string, @Body() dto: UpdateServiceBookingStatusDto) { this.requireAdmin(user); return this.bookings.updateStatus(id, dto.status, user.id).then((data) => ({ success: true, data })); }
+  @Get('admin/:id/history')
+  adminHistory(@CurrentUser() user: { id: string; role: string }, @Param('id') id: string) { this.requireAdmin(user); return this.bookings.adminHistory(id).then((data) => ({ success: true, data })); }
+  @Patch('admin/:id/review')
+  adminReview(@CurrentUser() user: { id: string; role: string }, @Param('id') id: string, @Body() dto: { decision: 'APPROVED' | 'REJECTED'; reason?: string }) { this.requireAdmin(user); return this.bookings.reviewBooking(id, user.id, dto.decision, dto.reason).then((data) => ({ success: true, data })); }
+  @Patch('admin/:id/image-review')
+  adminImageReview(@CurrentUser() user: { id: string; role: string }, @Param('id') id: string, @Body() dto: { decision: 'REVIEWED' | 'REJECTED'; reason?: string }) { this.requireAdmin(user); return this.bookings.reviewImages(id, user.id, dto.decision, dto.reason).then((data) => ({ success: true, data })); }
   @Roles('TRAINER')
   @Get('trainer/dashboard')
   trainerDashboard(@CurrentUser() user: { id: string }) { return this.bookings.trainerDashboard(user.id).then((data) => ({ success: true, data })); }
@@ -37,7 +49,8 @@ export class ServiceBookingsController {
   trainerGet(@CurrentUser() user: { id: string }, @Param('id') id: string) { return this.bookings.trainerBooking(user.id, id).then((data) => ({ success: true, data })); }
   @Roles('TRAINER')
   @Post('trainer/bookings/:bookingId/verify-otp')
-  trainerConfirm(@CurrentUser() user: { id: string }, @Param('bookingId') bookingId: string, @Body() dto: ConfirmTrainerBookingDto) { return this.bookings.confirmTrainerBooking(user.id, bookingId, dto.otp).then((booking) => ({ success: true, message: 'Booking confirmed successfully', booking })); }
+  @UseInterceptors(FilesInterceptor('sceneImages', MAX_SCENE_IMAGES, imageUploadOptions))
+  trainerConfirm(@CurrentUser() user: { id: string }, @Param('bookingId') bookingId: string, @Body() dto: ConfirmTrainerBookingDto, @UploadedFiles() files: Express.Multer.File[] = []) { return this.bookings.confirmTrainerBooking(user.id, bookingId, dto.otp, files).then((booking) => ({ success: true, message: 'Booking confirmed successfully', booking })); }
   @Roles('TRAINER')
   @Get('trainer/bookings')
   trainerList(@CurrentUser() user: { id: string }) { return this.bookings.trainerBookings(user.id).then((data) => ({ success: true, data })); }

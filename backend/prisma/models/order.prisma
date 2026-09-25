@@ -9,6 +9,7 @@ model Order {
   // Order totals
   subtotal Decimal @db.Decimal(10, 2)
   discount Decimal @default(0) @db.Decimal(10, 2)
+  shippingCharge Decimal @default(0) @db.Decimal(10, 2)
   total    Decimal @db.Decimal(10, 2)
 
   // Customer/shipping address snapshot
@@ -24,6 +25,7 @@ model Order {
   items   OrderItem[]
   payment Payment?
   serviceBooking ServiceBooking?
+  history OrderStatusHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -60,6 +62,16 @@ model ServiceBooking {
   otpAttempts Int @default(0)
   otpBlockedUntil DateTime?
   verifiedBy String?
+  sceneImages Json @default("[]")
+  imageReviewStatus ServiceBookingImageReviewStatus @default(NOT_UPLOADED)
+  imageReviewedAt DateTime?
+  imageReviewedBy String?
+  imageRejectionReason String?
+  adminReviewStatus ServiceBookingAdminReviewStatus @default(PENDING)
+  adminReviewedAt DateTime?
+  adminReviewedBy String?
+  adminRejectionReason String?
+  actions ServiceBookingAction[]
   sessions ServiceSession[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -67,6 +79,40 @@ model ServiceBooking {
   @@index([trainerId, status])
   @@index([customerId, createdAt])
   @@index([serviceId])
+}
+
+model ServiceBookingAction {
+  id String @id @default(uuid())
+  bookingId String
+  booking ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  action String
+  performedBy String?
+  actorType ServiceBookingActorType
+  description String
+  metadata Json?
+  performedAt DateTime @default(now())
+
+  @@index([bookingId, performedAt])
+}
+
+enum ServiceBookingImageReviewStatus {
+  NOT_UPLOADED
+  PENDING
+  REVIEWED
+  REJECTED
+}
+
+enum ServiceBookingAdminReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ServiceBookingActorType {
+  SYSTEM
+  CUSTOMER
+  TRAINER
+  ADMIN
 }
 
 model ServiceSession {
@@ -137,9 +183,35 @@ enum OrderItemType {
 }
 
 enum OrderStatus {
+  NEW
   PENDING
   CONFIRMED
   PROCESSING
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
   COMPLETED
   CANCELLED
+  REFUNDED
+}
+
+model OrderStatusHistory {
+  id String @id @default(uuid())
+  orderId String
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  previousStatus OrderStatus?
+  newStatus OrderStatus
+  changedBy String?
+  actorType OrderHistoryActorType
+  reason String?
+  metadata Json?
+  changedAt DateTime @default(now())
+
+  @@index([orderId, changedAt])
+}
+
+enum OrderHistoryActorType {
+  SYSTEM
+  CUSTOMER
+  ADMIN
 }
