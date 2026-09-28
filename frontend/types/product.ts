@@ -6,6 +6,7 @@ export type Product = {
   description: string;
   details?: string;
   price: string;
+  shippingIncluded: boolean;
   image: string;
   badge?: string;
   stock: string;

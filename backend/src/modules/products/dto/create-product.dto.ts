@@ -13,4 +13,5 @@ export class CreateProductDto {
   @IsOptional() @IsUrl({ protocols: ['http', 'https'], require_protocol: true }) imageUrl?: string;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) stock?: number;
   @IsOptional() @Type(() => Boolean) @IsBoolean() available?: boolean;
+  @IsOptional() @Transform(({ value }) => value === true || value === false ? value : value === 'true' ? true : value === 'false' ? false : value) @IsBoolean() shippingIncluded?: boolean;
 }

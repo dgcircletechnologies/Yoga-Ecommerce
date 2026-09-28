@@ -8,6 +8,9 @@ model Product {
   // Base price in USD
   price Decimal @db.Decimal(10, 2)
 
+  // Whether the product price already includes shipping
+  shippingIncluded Boolean @default(true)
+
   // Percentage discount: 0 = no discount, 20 = 20% off
   discount Decimal @default(0) @db.Decimal(5, 2)
 

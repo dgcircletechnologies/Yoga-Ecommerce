@@ -52,6 +52,7 @@ function ProductDetails({ product }: { product: Product }) {
             <div className="mt-6 p-5">
               <h2 className="text-2xl">{product.name} </h2>
               <InfoRow label="Category" value={product.category} />
+              <InfoRow label="Shipping" value={product.shippingIncluded ? "Shipping included in cost" : "Free shipping"} />
               <p className="pt-5">{product.stock ? <span className="text-green-500">In Stock</span> : <span className="text-red-500">Out of Stock</span>}</p>
               <div className="mt-5 grid gap-3">
                 <AddToCartButton product={product} />
