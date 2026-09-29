@@ -11,6 +11,9 @@ model Product {
   // Whether the product price already includes shipping
   shippingIncluded Boolean @default(true)
 
+  // Whether the product price already includes estimated sales tax
+  taxIncluded Boolean @default(true)
+
   // Percentage discount: 0 = no discount, 20 = 20% off
   discount Decimal @default(0) @db.Decimal(5, 2)
 

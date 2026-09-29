@@ -14,4 +14,5 @@ export class CreateProductDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) stock?: number;
   @IsOptional() @Type(() => Boolean) @IsBoolean() available?: boolean;
   @IsOptional() @Transform(({ value }) => value === true || value === false ? value : value === 'true' ? true : value === 'false' ? false : value) @IsBoolean() shippingIncluded?: boolean;
+  @IsOptional() @Transform(({ value }) => value === true || value === false ? value : value === 'true' ? true : value === 'false' ? false : value) @IsBoolean() taxIncluded?: boolean;
 }

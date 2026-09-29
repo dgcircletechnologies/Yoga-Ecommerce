@@ -7,6 +7,7 @@ export type Product = {
   details?: string;
   price: string;
   shippingIncluded: boolean;
+  taxIncluded: boolean;
   image: string;
   badge?: string;
   stock: string;
