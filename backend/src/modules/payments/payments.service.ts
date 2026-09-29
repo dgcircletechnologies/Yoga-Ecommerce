@@ -30,7 +30,7 @@ export class PaymentsService {
   async createOrder(dto: CreatePaymentOrderDto, user: User) {
     const payment = await this.getAccessiblePayment(dto.orderId, user, dto.email);
     if (payment.status === 'PAID') throw new ConflictException('This order has already been paid');
-    if (payment.order.status === 'CANCELLED') throw new ConflictException('Cancelled orders cannot be paid');
+    if (payment.order.status.toLowerCase() === 'cancelled') throw new ConflictException('Cancelled orders cannot be paid');
     const currency = dto.currency.toUpperCase();
     const amount = this.gatewayAmount(Number(payment.order.total), dto.exchangeRate);
     let gatewayOrder: { id: string; amount: number; currency: string };
@@ -56,7 +56,6 @@ export class PaymentsService {
       const current = await tx.payment.findUnique({ where: { id: payment.id }, select: { status: true } });
       if (current?.status === 'PAID') return tx.payment.findUniqueOrThrow({ where: { id: payment.id }, select: paymentSelect });
       const saved = await tx.payment.update({ where: { id: payment.id }, data: { status: 'PAID', razorpayPaymentId: dto.razorpayPaymentId, razorpaySignature: dto.razorpaySignature, transactionId: dto.razorpayPaymentId, paymentMethod: gatewayPayment.method ?? 'RAZORPAY', paidAt: new Date(), failureReason: null, gatewayMetadata: { ...(payment.gatewayMetadata && typeof payment.gatewayMetadata === 'object' && !Array.isArray(payment.gatewayMetadata) ? payment.gatewayMetadata : {}), gatewayStatus: gatewayPayment.status ?? 'captured' } }, select: paymentSelect });
-      if (saved.order?.status === 'PENDING') await tx.order.update({ where: { id: payment.orderId }, data: { status: 'CONFIRMED' } });
       return saved;
     });
     const booking = saved.status === 'PAID' ? await this.serviceBookings.markPaid(payment.orderId) : null;
@@ -81,7 +80,7 @@ export class PaymentsService {
     if (!payment || payment.status === 'PAID') return { received: true };
     if (body.event === 'payment.captured' || body.event === 'order.paid') {
       if (entity.amount !== Math.round(Number(payment.amount) * 100) || entity.currency !== payment.currency) throw new ConflictException('Webhook amount or currency does not match the order');
-      await this.prisma.$transaction(async (tx) => { await tx.payment.update({ where: { id: payment.id }, data: { status: 'PAID', razorpayPaymentId: entity.id, transactionId: entity.id, paymentMethod: entity.method ?? 'RAZORPAY', paidAt: new Date(), gatewayMetadata: { webhookEvent: body.event, gatewayStatus: entity.status } } }); if (payment.order?.status === 'PENDING') await tx.order.update({ where: { id: payment.orderId }, data: { status: 'CONFIRMED' } }); });
+      await this.prisma.$transaction(async (tx) => { await tx.payment.update({ where: { id: payment.id }, data: { status: 'PAID', razorpayPaymentId: entity.id, transactionId: entity.id, paymentMethod: entity.method ?? 'RAZORPAY', paidAt: new Date(), gatewayMetadata: { webhookEvent: body.event, gatewayStatus: entity.status } } }); });
     } else if (body.event === 'payment.failed') {
       await this.prisma.payment.update({ where: { id: payment.id }, data: { status: 'FAILED', failureReason: entity.error_description ?? 'Payment failed', razorpayPaymentId: entity.id, gatewayMetadata: { webhookEvent: body.event, gatewayStatus: entity.status } } });
     }

@@ -4,13 +4,13 @@ model Order {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  status OrderStatus @default(PENDING)
+  status String @default("new")
 
   // Order totals
-  subtotal Decimal @db.Decimal(10, 2)
-  discount Decimal @default(0) @db.Decimal(10, 2)
+  subtotal       Decimal @db.Decimal(10, 2)
+  discount       Decimal @default(0) @db.Decimal(10, 2)
   shippingCharge Decimal @default(0) @db.Decimal(10, 2)
-  total    Decimal @db.Decimal(10, 2)
+  total          Decimal @db.Decimal(10, 2)
 
   // Customer/shipping address snapshot
   name       String  @db.VarChar(100)
@@ -22,10 +22,10 @@ model Order {
   country    String
   postalCode String
 
-  items   OrderItem[]
-  payment Payment?
+  items          OrderItem[]
+  payment        Payment?
   serviceBooking ServiceBooking?
-  history OrderStatusHistory[]
+  history        OrderStatusHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -36,45 +36,45 @@ model Order {
 }
 
 model ServiceBooking {
-  id String @id @default(uuid())
-  orderId String @unique
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  serviceId String
-  service Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  trainerId String
-  trainer User @relation("TrainerBookings", fields: [trainerId], references: [id], onDelete: Restrict)
-  customerId String
-  customer User @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
-  quantity Int
-  pricePerSession Decimal @db.Decimal(10, 2)
-  totalAmount Decimal @db.Decimal(10, 2)
-  status ServiceBookingStatus @default(PENDING_PAYMENT)
-  address String
-  city String
-  state String
-  country String
-  postalCode String
-  otpHash String?
-  otp String?
-  otpEncrypted String?
-  otpExpiresAt DateTime?
-  otpVerifiedAt DateTime?
-  otpAttempts Int @default(0)
-  otpBlockedUntil DateTime?
-  verifiedBy String?
-  sceneImages Json @default("[]")
-  imageReviewStatus ServiceBookingImageReviewStatus @default(NOT_UPLOADED)
-  imageReviewedAt DateTime?
-  imageReviewedBy String?
+  id                   String                          @id @default(uuid())
+  orderId              String                          @unique
+  order                Order                           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  serviceId            String
+  service              Service                         @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  trainerId            String
+  trainer              User                            @relation("TrainerBookings", fields: [trainerId], references: [id], onDelete: Restrict)
+  customerId           String
+  customer             User                            @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+  quantity             Int
+  pricePerSession      Decimal                         @db.Decimal(10, 2)
+  totalAmount          Decimal                         @db.Decimal(10, 2)
+  status               ServiceBookingStatus            @default(PENDING_PAYMENT)
+  address              String
+  city                 String
+  state                String
+  country              String
+  postalCode           String
+  otpHash              String?
+  otp                  String?
+  otpEncrypted         String?
+  otpExpiresAt         DateTime?
+  otpVerifiedAt        DateTime?
+  otpAttempts          Int                             @default(0)
+  otpBlockedUntil      DateTime?
+  verifiedBy           String?
+  sceneImages          Json                            @default("[]")
+  imageReviewStatus    ServiceBookingImageReviewStatus @default(NOT_UPLOADED)
+  imageReviewedAt      DateTime?
+  imageReviewedBy      String?
   imageRejectionReason String?
-  adminReviewStatus ServiceBookingAdminReviewStatus @default(PENDING)
-  adminReviewedAt DateTime?
-  adminReviewedBy String?
+  adminReviewStatus    ServiceBookingAdminReviewStatus @default(PENDING)
+  adminReviewedAt      DateTime?
+  adminReviewedBy      String?
   adminRejectionReason String?
-  actions ServiceBookingAction[]
-  sessions ServiceSession[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  actions              ServiceBookingAction[]
+  sessions             ServiceSession[]
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
 
   @@index([trainerId, status])
   @@index([customerId, createdAt])
@@ -82,15 +82,15 @@ model ServiceBooking {
 }
 
 model ServiceBookingAction {
-  id String @id @default(uuid())
-  bookingId String
-  booking ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  action String
+  id          String                  @id @default(uuid())
+  bookingId   String
+  booking     ServiceBooking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  action      String
   performedBy String?
-  actorType ServiceBookingActorType
+  actorType   ServiceBookingActorType
   description String
-  metadata Json?
-  performedAt DateTime @default(now())
+  metadata    Json?
+  performedAt DateTime                @default(now())
 
   @@index([bookingId, performedAt])
 }
@@ -116,14 +116,14 @@ enum ServiceBookingActorType {
 }
 
 model ServiceSession {
-  id String @id @default(uuid())
-  bookingId String
-  booking ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id          String               @id @default(uuid())
+  bookingId   String
+  booking     ServiceBooking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   scheduledAt DateTime
-  status ServiceSessionStatus @default(SCHEDULED)
+  status      ServiceSessionStatus @default(SCHEDULED)
   completedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   @@unique([bookingId, scheduledAt])
   @@index([scheduledAt])
@@ -182,36 +182,13 @@ enum OrderItemType {
   SERVICE
 }
 
-enum OrderStatus {
-  NEW
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  OUT_FOR_DELIVERY
-  DELIVERED
-  COMPLETED
-  CANCELLED
-  REFUNDED
-}
-
 model OrderStatusHistory {
-  id String @id @default(uuid())
-  orderId String
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  previousStatus OrderStatus?
-  newStatus OrderStatus
-  changedBy String?
-  actorType OrderHistoryActorType
-  reason String?
-  metadata Json?
-  changedAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus String?
+  toStatus   String
+  createdAt  DateTime @default(now())
 
-  @@index([orderId, changedAt])
-}
-
-enum OrderHistoryActorType {
-  SYSTEM
-  CUSTOMER
-  ADMIN
+  @@index([orderId, createdAt])
 }

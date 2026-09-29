@@ -1,7 +1,5 @@
-import type { OrderStatus } from "@/types/order";
-
-export const orderStatuses: OrderStatus[] = ["New", "Confirmed", "Processing", "Shipped", "Out for Delivery", "Delivered", "Cancelled", "Refunded"];
+import { statusLabel, type OrderStatus } from "@/types/order";
 
 export function OrderStatusSelector({ value, onChange }: { value: OrderStatus; onChange: (value: OrderStatus) => void }) {
-  return <select aria-label="Order status" className="h-10 rounded-md border border-black/10 bg-white px-3 text-xs text-brand-dark outline-none focus:border-brand-purple" onChange={(event) => onChange(event.target.value as OrderStatus)} value={value}>{orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>;
+  return <div className="flex items-center gap-2"><select aria-label="Existing order status" className="h-10 rounded-md border border-black/10 bg-white px-3 text-xs text-brand-dark outline-none focus:border-brand-purple" onChange={(event) => { if (event.target.value) onChange(event.target.value); }} value=""><option value="">Change status…</option>{[value, "new", "delivered", "cancelled"].filter((status, index, all) => all.indexOf(status) === index).map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select><input aria-label="Custom order status" className="h-10 w-28 border border-black/10 px-2 text-xs" onKeyDown={(event) => { if (event.key === "Enter" && event.currentTarget.value.trim() && event.currentTarget.value.trim() !== value) { onChange(event.currentTarget.value.trim()); event.currentTarget.value = ""; } }} placeholder="Custom…" /></div>;
 }

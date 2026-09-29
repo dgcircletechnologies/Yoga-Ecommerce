@@ -47,6 +47,7 @@ export class ServiceBookingsService {
     const booking = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({ data: { userId: user.id, name: user.name, email: user.email, phone: user.phone, address: dto.address, city: dto.city, state: dto.state, country: dto.country, postalCode: dto.postalCode, subtotal: total, discount: 0, total, items: { create: { serviceId: service.id, type: 'SERVICE', name: service.name, price: Number(service.price), quantity, discount: 0, total } } }, select: { id: true } });
       await tx.payment.create({ data: { orderId: order.id, amount: total, currency: 'USD' } });
+      await tx.orderStatusHistory.create({ data: { orderId: order.id, fromStatus: null, toStatus: 'new' } });
       return tx.serviceBooking.create({ data: { orderId: order.id, serviceId: service.id, trainerId, customerId: user.id, quantity, pricePerSession: service.price, totalAmount: total, address: dto.address, city: dto.city, state: dto.state, country: dto.country, postalCode: dto.postalCode, sessions: { create: slots.map((scheduledAt) => ({ scheduledAt })) } }, include: { sessions: true } });
     });
     await this.prisma.serviceBookingAction.create({ data: { bookingId: booking.id, action: 'BOOKING_CREATED', actorType: customerId ? 'CUSTOMER' : 'SYSTEM', performedBy: customerId, description: 'Service booking created and sessions scheduled.' } });
