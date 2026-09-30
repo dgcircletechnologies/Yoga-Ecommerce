@@ -30,6 +30,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   orders Order[]
+  couponUsages CouponUsage[]
   trainerServices Service[] @relation("TrainerServices")
   trainerBookings ServiceBooking[] @relation("TrainerBookings")
   customerBookings ServiceBooking[] @relation("CustomerBookings")

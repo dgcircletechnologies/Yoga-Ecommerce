@@ -1,0 +1,51 @@
+model Coupon {
+  id             String             @id @default(uuid())
+  code           String             @unique @db.VarChar(100)
+  discountType   CouponDiscountType @default(PERCENTAGE)
+  discountValue  Decimal            @db.Decimal(5, 2)
+  minimumAmount  Decimal?           @db.Decimal(10, 2)
+  applicableTo   CouponApplicableTo
+  startDate      DateTime
+  expiryDate     DateTime
+  usageLimit     Int?
+  usageCount     Int                @default(0)
+  status         CouponStatus       @default(ACTIVE)
+
+  orders         Order[]
+  usages         CouponUsage[]
+
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([status, startDate, expiryDate])
+}
+
+model CouponUsage {
+  id             String   @id @default(uuid())
+  couponId       String
+  coupon         Coupon   @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  discountAmount Decimal  @db.Decimal(10, 2)
+  usedAt         DateTime @default(now())
+
+  @@index([couponId, usedAt])
+  @@index([userId, usedAt])
+}
+
+enum CouponDiscountType {
+  PERCENTAGE
+}
+
+enum CouponApplicableTo {
+  PRODUCT
+  SERVICE
+  BOTH
+}
+
+enum CouponStatus {
+  ACTIVE
+  INACTIVE
+}

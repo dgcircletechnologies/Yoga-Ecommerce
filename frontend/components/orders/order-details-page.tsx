@@ -21,7 +21,7 @@ export function OrderDetailsPage({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retrying, setRetrying] = useState(false);
-  const { currency, exchangeRate } = useCurrency();
+  const { currency, exchangeRate, formatPrice } = useCurrency();
 
   function loadOrder() {
     setLoading(true);
@@ -62,7 +62,7 @@ export function OrderDetailsPage({ id }: { id: string }) {
         </div>
         <div className="flex items-center justify-between gap-5 sm:flex-col sm:items-end">
           <div><p className="text-[10px] uppercase tracking-[0.12em] text-brand-gray">Current status</p><OrderStatusBadge status={order.status} /></div>
-          <span className="text-lg font-semibold">{order.displayTotal}</span>
+          <span className="text-lg font-semibold">{formatPrice(order.totalAmount)}</span>
         </div>
       </div>
 
@@ -77,13 +77,13 @@ export function OrderDetailsPage({ id }: { id: string }) {
           <h2 className="text-2xl">Items</h2>
           <div className="mt-6 divide-y divide-black/10">{order.items.map((item, index) => <div className="flex gap-4 py-5 first:pt-0 last:pb-0" key={`${item.name}-${index}`}>
             {item.image ? <div className="relative h-20 w-20 shrink-0 overflow-hidden bg-brand-light-gray"><Image alt="" className="object-cover" fill sizes="80px" src={item.image} unoptimized /></div> : <div className="h-20 w-20 shrink-0 bg-brand-light-gray" />}
-            <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{item.name}</p><p className="mt-1 text-xs uppercase tracking-[0.12em] text-brand-purple">{item.type === "SERVICE" ? `Service${item.sessions ? ` · ${item.sessions} sessions` : ""}` : "Product"}</p><p className="mt-2 text-sm text-brand-gray">Qty {item.quantity} · {order.currency} {item.price?.toFixed(2)}</p></div>
-            <p className="text-sm font-semibold">{order.currency} {item.total?.toFixed(2)}</p>
+            <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{item.name}</p><p className="mt-1 text-xs uppercase tracking-[0.12em] text-brand-purple">{item.type === "SERVICE" ? `Service${item.sessions ? ` · ${item.sessions} sessions` : ""}` : "Product"}</p><p className="mt-2 text-sm text-brand-gray">Qty {item.quantity} · {item.price === undefined ? "—" : formatPrice(item.price)}</p></div>
+            <p className="text-sm font-semibold">{item.total === undefined ? "—" : formatPrice(item.total)}</p>
           </div>)}</div>
         </section>
 
         <aside className="h-fit space-y-6">
-          <section className="border border-black/10 bg-brand-light-gray p-6"><h2 className="text-xl">Summary</h2><div className="mt-5 space-y-3 text-sm"><p className="flex justify-between gap-4"><span className="text-brand-gray">Subtotal</span><span>{order.currency} {(order.subtotal ?? order.totalAmount).toFixed(2)}</span></p>{(order.discount ?? 0) > 0 && <p className="flex justify-between gap-4"><span className="text-brand-gray">Discount</span><span>-{order.currency} {(order.discount ?? 0).toFixed(2)}</span></p>}<p className="flex justify-between gap-4 border-t border-black/10 pt-4 text-lg font-semibold"><span>Total</span><span>{order.displayTotal}</span></p><p className="pt-2 text-xs text-brand-gray">Payment: {order.paymentStatus}</p>{order.paymentStatus !== "Paid" && order.status.toLowerCase() !== "cancelled" && <Button className="mt-5 w-full" disabled={retrying} onClick={retryPayment} type="button">{retrying ? "Opening payment…" : "Retry payment"}</Button>}{error && <p className="text-xs text-red-700">{error}</p>}</div></section>
+          <section className="border border-black/10 bg-brand-light-gray p-6"><h2 className="text-xl">Summary</h2><div className="mt-5 space-y-3 text-sm"><p className="flex justify-between gap-4"><span className="text-brand-gray">Subtotal</span><span>{formatPrice(order.subtotal ?? order.totalAmount)}</span></p>{(order.discount ?? 0) > 0 && <p className="flex justify-between gap-4"><span className="text-brand-gray">Discount</span><span>-{formatPrice(order.discount ?? 0)}</span></p>}{order.couponCode && order.couponDiscountAmount !== undefined && <div className="border-y border-black/10 py-3"><p className="flex justify-between gap-4 font-semibold"><span>Coupon {order.couponCode}</span><span className="text-green-700">-{formatPrice(order.couponDiscountAmount)}</span></p><p className="mt-1 text-xs text-brand-gray">{order.couponDiscountValue}% percentage discount</p></div>}<p className="flex justify-between gap-4 border-t border-black/10 pt-4 text-lg font-semibold"><span>Total</span><span>{formatPrice(order.totalAmount)}</span></p><p className="pt-2 text-xs text-brand-gray">Payment: {order.paymentStatus}</p>{order.paymentStatus !== "Paid" && order.status.toLowerCase() !== "cancelled" && <Button className="mt-5 w-full" disabled={retrying} onClick={retryPayment} type="button">{retrying ? "Opening payment…" : "Retry payment"}</Button>}{error && <p className="text-xs text-red-700">{error}</p>}</div></section>
           <section className="border border-black/10 bg-white p-6"><h2 className="text-xl">Delivery details</h2><p className="mt-4 text-sm leading-6 text-brand-gray">{order.customer.name}<br />{order.customer.email}<br />{order.customer.phone && <>{order.customer.phone}<br /></>}{order.customer.address}</p></section>
         </aside>
       </div>

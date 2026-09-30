@@ -12,6 +12,7 @@ export class CreateServiceBookingDto {
   @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsString() phone?: string;
   @IsString() @IsNotEmpty() serviceId!: string;
+  @IsOptional() @IsString() couponCode?: string;
   @Type(() => BookingSessionDto) @ValidateNested({ each: true }) @ArrayMinSize(1) @ArrayMaxSize(12) sessions!: BookingSessionDto[];
   @IsString() @IsNotEmpty() address!: string;
   @IsString() @IsNotEmpty() city!: string;

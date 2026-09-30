@@ -4,6 +4,13 @@ model Order {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
+  couponId             String?
+  coupon               Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode           String? @db.VarChar(100)
+  couponDiscountType   CouponDiscountType?
+  couponDiscountValue  Decimal? @db.Decimal(5, 2)
+  couponDiscountAmount Decimal? @db.Decimal(10, 2)
+
   status String @default("new")
 
   // Order totals
@@ -25,6 +32,7 @@ model Order {
   items          OrderItem[]
   payment        Payment?
   serviceBooking ServiceBooking?
+  couponUsage   CouponUsage?
   history        OrderStatusHistory[]
 
   createdAt DateTime @default(now())
@@ -33,6 +41,7 @@ model Order {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([couponId])
 }
 
 model ServiceBooking {

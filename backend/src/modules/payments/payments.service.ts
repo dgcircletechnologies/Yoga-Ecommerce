@@ -7,6 +7,7 @@ import type { CreatePaymentOrderDto } from './dto/create-payment-order.dto.js';
 import type { VerifyPaymentDto } from './dto/verify-payment.dto.js';
 import type { FailPaymentDto } from './dto/fail-payment.dto.js';
 import { ServiceBookingsService } from '../service-bookings/service-bookings.service.js';
+import { CouponsService } from '../coupons/coupons.service.js';
 
 type User = { id: string; role: string } | undefined;
 const paymentSelect = { id: true, orderId: true, status: true, amount: true, currency: true, razorpayOrderId: true, razorpayPaymentId: true, razorpaySignature: true, transactionId: true, paymentMethod: true, failureReason: true, gatewayMetadata: true, attempt: true, createdAt: true, updatedAt: true, paidAt: true, order: { select: { id: true, userId: true, name: true, email: true, total: true, status: true, createdAt: true } } } as const;
@@ -18,7 +19,7 @@ export class PaymentsService {
   private readonly keySecret: string;
   private readonly webhookSecret?: string;
 
-  constructor(private readonly prisma: PrismaService, config: ConfigService, private readonly serviceBookings: ServiceBookingsService) {
+  constructor(private readonly prisma: PrismaService, config: ConfigService, private readonly serviceBookings: ServiceBookingsService, private readonly coupons: CouponsService) {
     const keyId = config.get<string>('razorpay.keyId');
     const keySecret = config.get<string>('razorpay.keySecret');
     this.keyId = keyId ?? '';
@@ -54,8 +55,9 @@ export class PaymentsService {
     if (Number(gatewayPayment.amount) !== Math.round(Number(payment.amount) * 100) || gatewayPayment.currency !== payment.currency) throw new ConflictException('Payment amount or currency does not match the order');
     const saved = await this.prisma.$transaction(async (tx) => {
       const current = await tx.payment.findUnique({ where: { id: payment.id }, select: { status: true } });
-      if (current?.status === 'PAID') return tx.payment.findUniqueOrThrow({ where: { id: payment.id }, select: paymentSelect });
+      if (current?.status === 'PAID') { await this.coupons.finalizeUsage(payment.orderId, tx); return tx.payment.findUniqueOrThrow({ where: { id: payment.id }, select: paymentSelect }); }
       const saved = await tx.payment.update({ where: { id: payment.id }, data: { status: 'PAID', razorpayPaymentId: dto.razorpayPaymentId, razorpaySignature: dto.razorpaySignature, transactionId: dto.razorpayPaymentId, paymentMethod: gatewayPayment.method ?? 'RAZORPAY', paidAt: new Date(), failureReason: null, gatewayMetadata: { ...(payment.gatewayMetadata && typeof payment.gatewayMetadata === 'object' && !Array.isArray(payment.gatewayMetadata) ? payment.gatewayMetadata : {}), gatewayStatus: gatewayPayment.status ?? 'captured' } }, select: paymentSelect });
+      await this.coupons.finalizeUsage(payment.orderId, tx);
       return saved;
     });
     const booking = saved.status === 'PAID' ? await this.serviceBookings.markPaid(payment.orderId) : null;
@@ -80,7 +82,7 @@ export class PaymentsService {
     if (!payment || payment.status === 'PAID') return { received: true };
     if (body.event === 'payment.captured' || body.event === 'order.paid') {
       if (entity.amount !== Math.round(Number(payment.amount) * 100) || entity.currency !== payment.currency) throw new ConflictException('Webhook amount or currency does not match the order');
-      await this.prisma.$transaction(async (tx) => { await tx.payment.update({ where: { id: payment.id }, data: { status: 'PAID', razorpayPaymentId: entity.id, transactionId: entity.id, paymentMethod: entity.method ?? 'RAZORPAY', paidAt: new Date(), gatewayMetadata: { webhookEvent: body.event, gatewayStatus: entity.status } } }); });
+      await this.prisma.$transaction(async (tx) => { await tx.payment.update({ where: { id: payment.id }, data: { status: 'PAID', razorpayPaymentId: entity.id, transactionId: entity.id, paymentMethod: entity.method ?? 'RAZORPAY', paidAt: new Date(), gatewayMetadata: { webhookEvent: body.event, gatewayStatus: entity.status } } }); await this.coupons.finalizeUsage(payment.orderId, tx); });
     } else if (body.event === 'payment.failed') {
       await this.prisma.payment.update({ where: { id: payment.id }, data: { status: 'FAILED', failureReason: entity.error_description ?? 'Payment failed', razorpayPaymentId: entity.id, gatewayMetadata: { webhookEvent: body.event, gatewayStatus: entity.status } } });
     }

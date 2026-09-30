@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getPaymentForOrder } from "@/api/payments.api";
 import { beginPayment } from "@/lib/checkout/payment-service";
 import { Container } from "@/components/ui/container";
+import { useAuth } from "@/hooks/use-auth";
 
 export function PaymentResultPage({ orderId }: { orderId?: string }) {
   const [payment, setPayment] = useState<Awaited<ReturnType<typeof getPaymentForOrder>>>();
@@ -12,6 +13,7 @@ export function PaymentResultPage({ orderId }: { orderId?: string }) {
   const [retrying, setRetrying] = useState(false);
   const [otp, setOtp] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(orderId));
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
     if (!orderId) { setLoading(false); return; }
@@ -40,7 +42,7 @@ export function PaymentResultPage({ orderId }: { orderId?: string }) {
     {successful ? <>
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-green-700">Payment successful</p>
       <h1 className="mt-3 text-4xl sm:text-5xl">{serviceBooking ? "Service booked" : "Order received"}</h1>
-      <p className="mt-5 text-sm leading-6 text-brand-gray">{serviceBooking ? `Your ${serviceBooking.serviceName ?? "service"} booking is confirmed. Log in to view your booking status, or contact the admin if you need help.` : "Your purchase was completed successfully. Log in to view your order status, or contact the admin if you need help."}</p>
+      <p className="mt-5 text-sm leading-6 text-brand-gray">{serviceBooking ? isAuthenticated ? `Your ${serviceBooking.serviceName ?? "service"} booking is confirmed. You can view its status from your account.` : `Your ${serviceBooking.serviceName ?? "service"} booking is confirmed. Log in to view your booking status, or contact the admin if you need help.` : isAuthenticated ? "Your purchase was completed successfully. You can view your order status from your account." : "Your purchase was completed successfully. Log in to view your order status, or contact the admin if you need help."}</p>
       {otp && <div className="mt-7 border border-brand-purple/20 bg-brand-purple/5 p-6"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-purple">Your service OTP</p><p className="mt-3 text-3xl font-bold tracking-[0.3em]">{otp}</p><p className="mt-3 text-xs leading-5 text-brand-gray">Keep this code safe and provide it to your trainer when requested.</p></div>}
     </> : <>
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-red-600">Payment not completed</p>
@@ -50,7 +52,7 @@ export function PaymentResultPage({ orderId }: { orderId?: string }) {
     {error && successful && <p className="mt-4 text-xs text-red-600">{error}</p>}
     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
       {!successful && <button className="inline-flex min-h-12 items-center justify-center bg-brand-purple px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-white" disabled={retrying} onClick={retry} type="button">{retrying ? "Opening payment…" : "Retry payment"}</button>}
-      {successful && <Link className="inline-flex min-h-12 items-center justify-center bg-brand-purple px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-white" href="/login">Log in to view status</Link>}
+      {successful && !authLoading && <Link className="inline-flex min-h-12 items-center justify-center bg-brand-purple px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-white" href={isAuthenticated && orderId ? `/orders/${encodeURIComponent(orderId)}` : "/login"}>{isAuthenticated ? "View order status" : "Log in to view status"}</Link>}
       <Link className="inline-flex min-h-12 items-center justify-center border border-brand-purple px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-purple" href={successful && serviceBooking ? "/services" : "/products"}>Continue shopping</Link>
     </div>
   </div></Container></main>;

@@ -1,10 +1,14 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 
 import { ArrowIcon } from "@/components/ui/icons";
 import type { Service } from "@/types/service";
+import { usdPrice, useCurrency } from "@/context/currency-context";
 
 export function ServiceCard({ service }: { service: Service }) {
+  const { formatPrice } = useCurrency();
   return (
     <article className="group bg-linear-to-b from-brand-purple/10 to-white">
       <Link aria-label={`View details for ${service.name}`} className="relative block aspect-6/7 overflow-hidden bg-brand-light-gray" href={`/services/${service.id}`}>
@@ -14,7 +18,7 @@ export function ServiceCard({ service }: { service: Service }) {
       <div className="px-5 py-7">
         <div className="flex items-start justify-between gap-4 text-brand-dark">
           <span className="text-sm  text-brand-dark">{service.sessions}</span>
-          <span className="text-right text-xl font-semibold">{service.price}<small className="block text-[10px] font-normal uppercase tracking-[0.12em] text-brand-gray">/ session</small></span>
+          <span className="text-right text-xl font-semibold">{formatPrice(usdPrice(service.price))}<small className="block text-[10px] font-normal uppercase tracking-[0.12em] text-brand-gray">/ session</small></span>
         </div>
         <Link className="mt-5 block" href={`/services/${service.id}`}>
           <h3 className="text-2xl transition-colors group-hover:text-brand-purple">{service.name}</h3>

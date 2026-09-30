@@ -4,10 +4,11 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomInt, t
 import { PrismaService } from '../../database/prisma.service.js';
 import { CloudinaryService } from '../../cloudinary/cloudinary.service.js';
 import type { CreateServiceBookingDto } from './dto/create-service-booking.dto.js';
+import { CouponsService } from '../coupons/coupons.service.js';
 
 @Injectable()
 export class ServiceBookingsService {
-  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService, private readonly cloudinary: CloudinaryService) {}
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService, private readonly cloudinary: CloudinaryService, private readonly coupons: CouponsService) {}
 
   async create(customerId: string | undefined, dto: CreateServiceBookingDto) {
     const service = await this.prisma.service.findUnique({ where: { id: dto.serviceId }, include: { trainer: true } });
@@ -38,14 +39,14 @@ export class ServiceBookingsService {
       select: { id: true },
     });
     if (conflict) throw new ConflictException('One or more selected times are no longer available');
-    const quantity = slots.length; const total = Number(service.price) * quantity;
+    const quantity = slots.length; const pricing = await this.coupons.calculate([{ type: 'SERVICE', serviceId: service.id, quantity }], dto.couponCode); const total = pricing.total;
     if (!customerId && (!dto.name || !dto.email)) throw new BadRequestException('Name and email are required for guest bookings');
     const user = customerId
       ? await this.prisma.user.findUnique({ where: { id: customerId }, select: { id: true, name: true, email: true, phone: true } })
       : await this.prisma.user.upsert({ where: { email: dto.email!.trim().toLowerCase() }, update: { name: dto.name!.trim(), phone: dto.phone?.trim() }, create: { name: dto.name!.trim(), email: dto.email!.trim().toLowerCase(), phone: dto.phone?.trim(), password: null, role: 'USER' }, select: { id: true, name: true, email: true, phone: true } });
     if (!user) throw new NotFoundException('Customer not found');
     const booking = await this.prisma.$transaction(async (tx) => {
-      const order = await tx.order.create({ data: { userId: user.id, name: user.name, email: user.email, phone: user.phone, address: dto.address, city: dto.city, state: dto.state, country: dto.country, postalCode: dto.postalCode, subtotal: total, discount: 0, total, items: { create: { serviceId: service.id, type: 'SERVICE', name: service.name, price: Number(service.price), quantity, discount: 0, total } } }, select: { id: true } });
+      const order = await tx.order.create({ data: { userId: user.id, name: user.name, email: user.email, phone: user.phone, address: dto.address, city: dto.city, state: dto.state, country: dto.country, postalCode: dto.postalCode, subtotal: pricing.subtotal, discount: 0, total, couponId: pricing.coupon?.id, couponCode: pricing.coupon?.code, couponDiscountType: pricing.coupon?.discountType, couponDiscountValue: pricing.coupon?.discountValue, couponDiscountAmount: pricing.coupon ? pricing.discountAmount : null, items: { create: { serviceId: service.id, type: 'SERVICE', name: service.name, price: Number(service.price), quantity, discount: 0, total: Number(service.price) * quantity } } }, select: { id: true } });
       await tx.payment.create({ data: { orderId: order.id, amount: total, currency: 'USD' } });
       await tx.orderStatusHistory.create({ data: { orderId: order.id, fromStatus: null, toStatus: 'new' } });
       return tx.serviceBooking.create({ data: { orderId: order.id, serviceId: service.id, trainerId, customerId: user.id, quantity, pricePerSession: service.price, totalAmount: total, address: dto.address, city: dto.city, state: dto.state, country: dto.country, postalCode: dto.postalCode, sessions: { create: slots.map((scheduledAt) => ({ scheduledAt })) } }, include: { sessions: true } });

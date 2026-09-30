@@ -15,6 +15,7 @@ import { CategoriesModule } from './modules/categories/categories.module.js';
 import { CloudinaryModule } from './cloudinary/cloudinary.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { ServiceBookingsModule } from './modules/service-bookings/service-bookings.module.js';
+import { CouponsModule } from './modules/coupons/coupons.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ServiceBookingsModule } from './modules/service-bookings/service-bookin
     CloudinaryModule,
     AnalyticsModule,
     ServiceBookingsModule,
+    CouponsModule,
   ],
 })
 export class AppModule {}

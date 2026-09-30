@@ -17,5 +17,6 @@ export class CreateOrderDto {
   @IsString() @IsNotEmpty() country!: string;
   @IsString() @IsNotEmpty() postalCode!: string;
   @IsOptional() @IsString() @MaxLength(3) currency?: string;
+  @IsOptional() @IsString() @MaxLength(100) couponCode?: string;
   @IsArray() @ValidateNested({ each: true }) @Type(() => CreateOrderItemDto) items!: CreateOrderItemDto[];
 }
