@@ -9,14 +9,11 @@ import { Container } from "@/components/ui/container";
 const date = (value: string) => new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(value));
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
-type Queue = "pending" | "confirmed" | "images" | "review" | "completed" | "history";
+type Queue = "pending" | "review" | "completed";
 const config: Record<Queue, { title: string; description: string; query: Record<string, string>; empty: string }> = {
   pending: { title: "Pending Trainer Confirmation", description: "Bookings that still need OTP confirmation from the assigned trainer.", query: { trainerConfirmation: "pending" }, empty: "All current service bookings have been confirmed by their trainers." },
-  confirmed: { title: "Trainer Confirmed", description: "Bookings confirmed by trainers and ready for operational follow-up.", query: { trainerConfirmation: "confirmed" }, empty: "No trainer-confirmed bookings yet." },
-  images: { title: "Image Review", description: "Review scene photos uploaded during trainer confirmation.", query: { imageReviewStatus: "PENDING" }, empty: "No trainer-uploaded session photos are currently waiting for review." },
   review: { title: "Admin Review", description: "Trainer-confirmed bookings awaiting an administrative decision.", query: { adminReviewStatus: "PENDING", trainerConfirmation: "confirmed" }, empty: "Nothing to review. There are no trainer-confirmed bookings waiting for admin review." },
   completed: { title: "Completed Services", description: "Bookings approved by an administrator.", query: { adminReviewStatus: "APPROVED" }, empty: "No approved service bookings yet." },
-  history: { title: "Action History", description: "Open a booking to inspect its immutable operational history.", query: {}, empty: "No service-booking actions found." },
 };
 
 function Badge({ children, tone = "gray" }: { children: string; tone?: "gray" | "green" | "amber" | "red" | "purple" }) { const tones = { gray: "bg-black/5 text-brand-gray", green: "bg-green-100 text-green-800", amber: "bg-amber-100 text-amber-800", red: "bg-red-100 text-red-800", purple: "bg-brand-purple/10 text-brand-purple" }; return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${tones[tone]}`}>{children}</span>; }
