@@ -23,6 +23,7 @@ model Order {
   name       String  @db.VarChar(100)
   email      String  @db.VarChar(255)
   phone      String? @db.VarChar(20)
+  countryCode String? @db.VarChar(5)
   address    String
   city       String
   state      String

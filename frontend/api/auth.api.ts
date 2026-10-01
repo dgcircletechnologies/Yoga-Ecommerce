@@ -6,6 +6,7 @@ export type AuthUser = {
   email: string;
   role: "USER" | "TRAINER" | "ADMIN";
   phone?: string | null;
+  countryCode?: string | null;
   address1?: string | null;
   address2?: string | null;
   city?: string | null;

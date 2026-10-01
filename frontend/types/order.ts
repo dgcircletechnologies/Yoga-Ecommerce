@@ -1,9 +1,10 @@
 export type OrderStatus = string;
 export type PaymentStatus = "Paid" | "Pending" | "Failed" | "Refunded";
 export type OrderType = "Product" | "Service" | "Mixed";
-export type OrderCustomer = { name: string; email: string; phone?: string; address?: string };
+export type OrderCustomer = { name: string; email: string; phone?: string; countryCode?: string; address?: string };
+export type OrderShippingAddress = { addressLine1?: string; city?: string; state?: string; postalCode?: string; country?: string };
 export type OrderItem = { name: string; quantity: number; price?: number; total?: number; type?: "PRODUCT" | "SERVICE"; image?: string; sessions?: number };
 export type OrderService = { id: string; name: string; sessions: string };
-export type Order = { id: string; type: OrderType; customer: OrderCustomer; items: OrderItem[]; service?: OrderService; subtotal?: number; discount?: number; shippingCharge?: number; couponCode?: string; couponDiscountType?: "PERCENTAGE"; couponDiscountValue?: number; couponDiscountAmount?: number; totalAmount: number; displayTotal?: string; currency?: string; paymentStatus: PaymentStatus; status: OrderStatus; createdAt: string; updatedAt?: string; deliveredAt?: string };
+export type Order = { id: string; type: OrderType; customer: OrderCustomer; shippingAddress?: OrderShippingAddress; items: OrderItem[]; service?: OrderService; subtotal?: number; discount?: number; shippingCharge?: number; couponCode?: string; couponDiscountType?: "PERCENTAGE"; couponDiscountValue?: number; couponDiscountAmount?: number; totalAmount: number; displayTotal?: string; currency?: string; paymentStatus: PaymentStatus; status: OrderStatus; createdAt: string; updatedAt?: string; deliveredAt?: string };
 export type OrderStatusHistory = { id: string; orderId: string; fromStatus: string | null; toStatus: string; createdAt: string };
 export function statusLabel(status: string) { return status.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }

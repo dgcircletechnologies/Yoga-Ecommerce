@@ -17,6 +17,7 @@ export interface SafeUser {
   email: string;
   role: Role;
   phone?: string | null;
+  countryCode?: string | null;
   address1?: string | null;
   address2?: string | null;
   city?: string | null;
@@ -43,6 +44,7 @@ export class AuthService {
         password: true,
         role: true,
         phone: true,
+        countryCode: true,
         address1: true,
         address2: true,
         city: true,
@@ -92,6 +94,7 @@ export class AuthService {
           email: true,
           role: true,
           phone: true,
+          countryCode: true,
           address1: true,
           address2: true,
           city: true,
@@ -130,6 +133,7 @@ export class AuthService {
         email: true,
         role: true,
         phone: true,
+        countryCode: true,
         address1: true,
         address2: true,
         city: true,
@@ -149,6 +153,7 @@ export class AuthService {
     email: string;
     role: Role;
     phone?: string | null;
+    countryCode?: string | null;
     address1?: string | null;
     address2?: string | null;
     city?: string | null;
@@ -156,6 +161,6 @@ export class AuthService {
     country?: string | null;
     postalCode?: string | null;
   }): SafeUser {
-    return { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, address1: user.address1, address2: user.address2, city: user.city, state: user.state, country: user.country, postalCode: user.postalCode };
+    return { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, countryCode: user.countryCode, address1: user.address1, address2: user.address2, city: user.city, state: user.state, country: user.country, postalCode: user.postalCode };
   }
 }

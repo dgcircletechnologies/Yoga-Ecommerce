@@ -88,6 +88,10 @@ export function PhoneIcon({ className = "" }: IconProps) {
   return <svg aria-hidden="true" className={className} fill="none" height="20" viewBox="0 0 24 24" width="20"><path d="M7.5 4.5 5 6c-.5 4 5.5 10 9 11.5l2.5-1.5-2-3-2 1c-1.5-.75-3.75-3-4.5-4.5l1-2-1.5-3Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" /></svg>;
 }
 
+export function PrintIcon({ className = "" }: IconProps) {
+  return <svg aria-hidden="true" className={className} fill="none" height="19" viewBox="0 0 24 24" width="19"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v6H7v-6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" /></svg>;
+}
+
 export function ClockIcon({ className = "" }: IconProps) {
   return <svg aria-hidden="true" className={className} fill="none" height="20" viewBox="0 0 24 24" width="20"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.5" /><path d="M12 7.5V12l3 2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" /></svg>;
 }

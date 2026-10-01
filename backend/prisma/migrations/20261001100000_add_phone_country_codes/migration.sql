@@ -1,0 +1,2 @@
+ALTER TABLE "User" ADD COLUMN "countryCode" VARCHAR(5);
+ALTER TABLE "Order" ADD COLUMN "countryCode" VARCHAR(5);

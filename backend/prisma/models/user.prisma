@@ -4,6 +4,7 @@ model User {
   name  String  @db.VarChar(100)
   email String  @unique @db.VarChar(255)
   phone String? @db.VarChar(20)
+  countryCode String? @db.VarChar(5)
 
   // Authentication
   password String?

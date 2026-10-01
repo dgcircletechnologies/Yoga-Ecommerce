@@ -56,3 +56,30 @@ a {
 .mobile-navigation-scroll::-webkit-scrollbar {
   display: none;
 }
+
+@media print {
+  body:has(.print-order-page) {
+    overflow: visible !important;
+  }
+
+  /* The print route still renders inside the admin shell. Make the order
+     document the only visible printable surface, regardless of the shell's
+     internal navbar/sidebar markup. */
+  body:has(.print-order-page) * {
+    visibility: hidden !important;
+  }
+
+  body:has(.print-order-page) .print-order-page,
+  body:has(.print-order-page) .print-order-page * {
+    visibility: visible !important;
+  }
+
+  body:has(.print-order-page) .print-order-page {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 40px !important;
+  }
+}
