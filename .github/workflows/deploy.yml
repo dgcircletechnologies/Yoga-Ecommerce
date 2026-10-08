@@ -98,7 +98,7 @@ jobs:
       - name: Validate deployment secrets
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
@@ -345,7 +345,7 @@ jobs:
       - name: Prepare application directory
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
@@ -367,7 +367,7 @@ jobs:
       - name: Upload source archive
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
@@ -389,7 +389,7 @@ jobs:
       - name: Upload production environment
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
@@ -411,7 +411,7 @@ jobs:
       - name: Deploy application
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
