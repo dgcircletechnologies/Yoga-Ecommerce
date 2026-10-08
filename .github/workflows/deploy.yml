@@ -1,3 +1,4 @@
+
 name: Yoga Fitness CI/CD
 
 on:
@@ -13,9 +14,7 @@ concurrency:
   group: yoga-fitness-production
   cancel-in-progress: false
 
-
 jobs:
-
   # ============================================================
   # CI - Build Docker Images
   # ============================================================
@@ -24,13 +23,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
 
       # --------------------------------------------------------
       # Backend
@@ -47,7 +44,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-
       # --------------------------------------------------------
       # Frontend
       # --------------------------------------------------------
@@ -62,7 +58,6 @@ jobs:
             FRONTEND_INTERNAL_PORT=${{ secrets.FRONTEND_INTERNAL_PORT }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
 
   # ============================================================
   # CD - Deploy to Hostinger
@@ -87,25 +82,14 @@ jobs:
 
 
       # --------------------------------------------------------
-      # Configure SSH
+      # Install sshpass
       # --------------------------------------------------------
-      - name: Configure SSH
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      - name: Install sshpass
         run: |
           set -e
 
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-
-          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-          ssh-keyscan -p "${VPS_PORT:-22}" -H "$VPS_HOST" >> ~/.ssh/known_hosts
-
-          chmod 644 ~/.ssh/known_hosts
+          sudo apt-get update
+          sudo apt-get install -y sshpass
 
 
       # --------------------------------------------------------
@@ -113,11 +97,11 @@ jobs:
       # --------------------------------------------------------
       - name: Validate deployment secrets
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
 
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           INTERNAL_API_URL: ${{ secrets.INTERNAL_API_URL }}
@@ -161,9 +145,11 @@ jobs:
           set -e
 
           required_vars=(
-            VPS_HOST
-            VPS_USER
-            VPS_SSH_KEY
+            HOSTINGER_HOST
+            HOSTINGER_USER
+            HOSTINGER_PORT
+            HOSTINGER_PASSWORD
+            HOSTINGER_APP_DIR
 
             NEXT_PUBLIC_API_URL
             INTERNAL_API_URL
@@ -205,18 +191,42 @@ jobs:
 
 
       # --------------------------------------------------------
+      # Configure SSH known_hosts
+      # --------------------------------------------------------
+      - name: Configure SSH
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -e
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          ssh-keyscan \
+            -p "${HOSTINGER_PORT:-22}" \
+            -H "$HOSTINGER_HOST" >> ~/.ssh/known_hosts
+
+          chmod 644 ~/.ssh/known_hosts
+
+          echo "SSH host configured."
+
+
+      # --------------------------------------------------------
       # Determine application directory
       # --------------------------------------------------------
       - name: Set application directory
         id: app_dir
         env:
-          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
         run: |
-          APP_DIR="${VPS_APP_DIR:-/root/yoga-fitness}"
+          set -e
+
+          APP_DIR="${HOSTINGER_APP_DIR:-/root/yoga-fitness}"
 
           echo "APP_DIR=$APP_DIR" >> "$GITHUB_OUTPUT"
 
-          echo "Deployment directory: $APP_DIR"
+          echo "Deployment directory configured."
 
 
       # --------------------------------------------------------
@@ -234,6 +244,8 @@ jobs:
             --exclude='*.log' \
             -czf /tmp/yoga-fitness.source.tar.gz \
             -C "$GITHUB_WORKSPACE" .
+
+          echo "Source archive created."
 
 
       # --------------------------------------------------------
@@ -332,17 +344,21 @@ jobs:
       # --------------------------------------------------------
       - name: Prepare application directory
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
         run: |
           set -e
 
-          ssh \
-            -p "${VPS_PORT:-22}" \
-            "$VPS_USER@$VPS_HOST" \
+          sshpass -p "$HOSTINGER_PASSWORD" ssh \
+            -o StrictHostKeyChecking=yes \
+            -p "${HOSTINGER_PORT:-22}" \
+            "$HOSTINGER_USER@$HOSTINGER_HOST" \
             "mkdir -p '$APP_DIR'"
+
+          echo "Application directory prepared."
 
 
       # --------------------------------------------------------
@@ -350,17 +366,21 @@ jobs:
       # --------------------------------------------------------
       - name: Upload source archive
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
         run: |
           set -e
 
-          scp \
-            -P "${VPS_PORT:-22}" \
+          sshpass -p "$HOSTINGER_PASSWORD" scp \
+            -o StrictHostKeyChecking=yes \
+            -P "${HOSTINGER_PORT:-22}" \
             /tmp/yoga-fitness.source.tar.gz \
-            "$VPS_USER@$VPS_HOST:$APP_DIR/source.tar.gz"
+            "$HOSTINGER_USER@$HOSTINGER_HOST:$APP_DIR/source.tar.gz"
+
+          echo "Source archive uploaded."
 
 
       # --------------------------------------------------------
@@ -368,17 +388,21 @@ jobs:
       # --------------------------------------------------------
       - name: Upload production environment
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
         run: |
           set -e
 
-          scp \
-            -P "${VPS_PORT:-22}" \
+          sshpass -p "$HOSTINGER_PASSWORD" scp \
+            -o StrictHostKeyChecking=yes \
+            -P "${HOSTINGER_PORT:-22}" \
             /tmp/yoga-fitness.production.env \
-            "$VPS_USER@$VPS_HOST:$APP_DIR/.env"
+            "$HOSTINGER_USER@$HOSTINGER_HOST:$APP_DIR/.env"
+
+          echo "Production environment uploaded."
 
 
       # --------------------------------------------------------
@@ -386,16 +410,18 @@ jobs:
       # --------------------------------------------------------
       - name: Deploy application
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
         run: |
           set -e
 
-          ssh \
-            -p "${VPS_PORT:-22}" \
-            "$VPS_USER@$VPS_HOST" \
+          sshpass -p "$HOSTINGER_PASSWORD" ssh \
+            -o StrictHostKeyChecking=yes \
+            -p "${HOSTINGER_PORT:-22}" \
+            "$HOSTINGER_USER@$HOSTINGER_HOST" \
             "APP_DIR='$APP_DIR' bash -s" <<'REMOTE_SCRIPT'
 
           set -e
@@ -425,6 +451,7 @@ jobs:
           test -f docker-compose.prod.yml
           test -f frontend/Dockerfile.prod
           test -f backend/Dockerfile.prod
+          test -f .env
 
           echo "Required files found."
 
@@ -484,3 +511,4 @@ jobs:
           echo "========================================="
 
           REMOTE_SCRIPT
+
