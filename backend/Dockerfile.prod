@@ -2,7 +2,8 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-ARG BACKEND_INTERNAL_PORT
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
 
 COPY package*.json ./
 
@@ -17,6 +18,8 @@ FROM node:24-alpine AS runner
 
 WORKDIR /app
 
+ARG BACKEND_INTERNAL_PORT
+
 ENV NODE_ENV=production
 
 COPY package*.json ./
@@ -25,8 +28,6 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
-# Prisma 7 loads this config when running migrations. Keep it in the
-# production image, along with dotenv (a runtime dependency below).
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 EXPOSE $BACKEND_INTERNAL_PORT

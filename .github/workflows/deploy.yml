@@ -41,6 +41,9 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile.prod
           push: false
+          build-args: |
+            DATABASE_URL=postgresql://ci_user:ci_password@localhost:5432/ci_database
+            BACKEND_INTERNAL_PORT=4000
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -54,6 +57,8 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile.prod
           push: false
+          build-args: |
+            FRONTEND_INTERNAL_PORT=3000
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
