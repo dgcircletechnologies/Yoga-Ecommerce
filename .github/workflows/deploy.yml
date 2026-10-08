@@ -1,200 +1,359 @@
-name: Deploy Yoga Fitness to Hostinger
+name: Yoga Fitness CI/CD
 
 on:
   push:
     branches:
+      - '*'
+  pull_request:
+    branches:
       - main
-
-  workflow_dispatch:
 
 concurrency:
   group: yoga-fitness-production
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy to Hostinger
+  # ============================================
+  # CI - Verify Docker images build
+  # ============================================
+  ci:
+    name: CI - Build Docker Images
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.2
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
         with:
-          host: ${{ secrets.HOSTINGER_HOST }}
-          username: ${{ secrets.HOSTINGER_USERNAME }}
-          password: ${{ secrets.HOSTINGER_PASSWORD }}
-          port: 22
+          context: ./backend
+          target: production
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-          script: |
-            set -e
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          target: production
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-            APP_DIR="/root/yoga-fitness"
-            REPO="git@github.com:YOUR_USERNAME/YOUR_REPOSITORY.git"
+  # ============================================
+  # CD - Deploy to Hostinger VPS
+  # ============================================
+  deploy:
+    name: CD - Deploy to Hostinger
+    runs-on: ubuntu-latest
+    needs: ci
 
-            echo "======================================"
-            echo "Yoga Fitness Production Deployment"
-            echo "======================================"
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-            echo "Checking Git..."
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
 
-            git --version
+      # ============================================
+      # Configure SSH
+      # ============================================
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
 
-            if [ ! -d "$APP_DIR/.git" ]; then
+        run: |
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_USER" ] || [ -z "$VPS_PORT" ] || [ -z "$VPS_SSH_KEY" ]; then
+            echo "VPS_HOST, VPS_USER, VPS_PORT, and VPS_SSH_KEY secrets are required."
+            exit 1
+          fi
 
-              echo "Repository does not exist."
-              echo "Cloning repository..."
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
 
-              mkdir -p "$APP_DIR"
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/yoga-fitness
+          chmod 600 ~/.ssh/yoga-fitness
 
-              git clone "$REPO" "$APP_DIR"
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
 
-            else
+      # ============================================
+      # Deploy application
+      # ============================================
+      - name: Deploy application
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
 
-              echo "Repository already exists."
-              echo "Updating repository..."
+          # VPS_APP_DIR can be added as a GitHub secret.
+          # If not provided, /root/yoga-fitness will be used.
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
 
-              cd "$APP_DIR"
+          # Application secrets
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+          APP_FRONTEND_URL: ${{ secrets.APP_FRONTEND_URL }}
 
-              git fetch origin
-              git reset --hard origin/main
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
+          JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+
+        run: |
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_USER" ] || [ -z "$VPS_PORT" ]; then
+            echo "VPS_HOST, VPS_USER, and VPS_PORT secrets are required."
+            exit 1
+          fi
+
+          APP_DIR="${VPS_APP_DIR:-/root/yoga-fitness}"
+
+          # ============================================
+          # Validate required production secrets
+          # ============================================
+
+          missing_app_secrets=""
+
+          for secret_name in \
+            POSTGRES_PASSWORD \
+            JWT_ACCESS_SECRET \
+            JWT_REFRESH_SECRET \
+            SMTP_HOST \
+            SMTP_USER \
+            SMTP_PASS \
+            CLOUDINARY_CLOUD_NAME \
+            CLOUDINARY_API_KEY \
+            CLOUDINARY_API_SECRET
+          do
+            if [ -z "${!secret_name}" ]; then
+              missing_app_secrets="$missing_app_secrets $secret_name"
             fi
+          done
 
-            cd "$APP_DIR"
+          if [ -n "$missing_app_secrets" ]; then
+            echo "Missing required production secrets:$missing_app_secrets"
+            exit 1
+          fi
 
-            echo "Repository updated."
+          # ============================================
+          # Create source archive
+          # ============================================
 
-            echo "Creating production environment..."
+          echo "===== Creating source archive ====="
 
-            cat > .env <<'EOF'
-            FRONTEND_PORT=5002
-            BACKEND_PORT=9001
-            BACKEND_INTERNAL_PORT=3000
-            FRONTEND_INTERNAL_PORT=3000
-            BACKEND_HOST=localhost
-            BACKEND_SERVICE_HOST=backend
+          tar \
+            --exclude='.git' \
+            --exclude='backend/node_modules' \
+            --exclude='frontend/node_modules' \
+            --exclude='backend/dist' \
+            --exclude='frontend/.next' \
+            --exclude='frontend/node_modules' \
+            -czf /tmp/yoga-fitness.source.tar.gz \
+            .
 
-            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          # ============================================
+          # Production database configuration
+          # ============================================
 
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+          POSTGRES_USER_VALUE="yoga_fitness"
+          POSTGRES_DB_VALUE="yoga_fitness_db"
 
-            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-            ADMIN_URL=${{ secrets.ADMIN_URL }}
+          POSTGRES_PASSWORD_ENCODED="$(node -e 'console.log(encodeURIComponent(process.env.POSTGRES_PASSWORD || ""))')"
 
-            MAIL_HOST=${{ secrets.MAIL_HOST }}
-            MAIL_PORT=${{ secrets.MAIL_PORT }}
-            MAIL_SECURE=${{ secrets.MAIL_SECURE }}
-            MAIL_USER=${{ secrets.MAIL_USER }}
-            MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
-            MAIL_FROM_EMAIL=${{ secrets.MAIL_FROM_EMAIL }}
-            MAIL_FROM_NAME=${{ secrets.MAIL_FROM_NAME }}
-            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          DATABASE_URL="postgresql://${POSTGRES_USER_VALUE}:${POSTGRES_PASSWORD_ENCODED}@postgres:5432/${POSTGRES_DB_VALUE}"
 
-            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
-            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
-            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
-            CLOUDINARY_PRODUCT_FOLDER=${{ secrets.CLOUDINARY_PRODUCT_FOLDER }}
+          # ============================================
+          # Create production .env
+          # ============================================
 
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-            INTERNAL_API_URL=${{ secrets.INTERNAL_API_URL }}
+          echo "===== Creating production environment file ====="
 
-            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
-            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
-            RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
-            EOF
+          {
+            printf '%s\n' "POSTGRES_USER=${POSTGRES_USER_VALUE}"
+            printf '%s\n' "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+            printf '%s\n' "POSTGRES_DB=${POSTGRES_DB_VALUE}"
+            printf '%s\n' "DATABASE_URL=${DATABASE_URL}"
 
-            chmod 600 .env
+            # Internal container ports
+            printf '%s\n' "POSTGRES_PORT=5432"
+            printf '%s\n' "BACKEND_PORT=3000"
+            printf '%s\n' "FRONTEND_PORT=3000"
 
-            echo "Validating Docker..."
+            # Application URLs
+            printf '%s\n' "CORS_ORIGIN=${CORS_ORIGIN}"
+            printf '%s\n' "APP_FRONTEND_URL=${APP_FRONTEND_URL}"
 
-            docker --version
-            docker compose version
+            # Frontend API configuration
+            printf '%s\n' "NEXT_PUBLIC_API_BASE_URL=/api/v1"
+            printf '%s\n' "API_INTERNAL_BASE_URL=http://backend:3000/api/v1"
 
-            echo "Validating Docker Compose..."
+            # JWT
+            printf '%s\n' "JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}"
+            printf '%s\n' "JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}"
+            printf '%s\n' "REFRESH_TOKEN_HASH_SECRET=${JWT_REFRESH_SECRET}"
+            printf '%s\n' "ONE_TIME_TOKEN_HASH_SECRET=${JWT_REFRESH_SECRET}"
 
-            docker compose \
-              -f docker-compose.prod.yml \
-              config -q
+            printf '%s\n' "JWT_ACCESS_EXPIRES_IN_SECONDS=900"
+            printf '%s\n' "JWT_REFRESH_EXPIRES_IN_SECONDS=604800"
 
-            echo "Building and starting containers..."
+            # Email verification
+            printf '%s\n' "EMAIL_VERIFICATION_EXPIRES_IN_MINUTES=60"
 
-            docker compose \
-              -f docker-compose.prod.yml \
-              up -d \
-              --build \
-              --remove-orphans
+            # SMTP
+            printf '%s\n' "SMTP_HOST=${SMTP_HOST}"
+            printf '%s\n' "SMTP_PORT=587"
+            printf '%s\n' "SMTP_USER=${SMTP_USER}"
+            printf '%s\n' "SMTP_PASS=${SMTP_PASS}"
+            printf '%s\n' "SMTP_FROM="
+            printf '%s\n' "SUPPORT_EMAIL="
 
-            echo "Waiting for containers..."
+            # Cloudinary
+            printf '%s\n' "CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}"
+            printf '%s\n' "CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}"
+            printf '%s\n' "CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}"
 
-            sleep 10
+            # Update these folders if your Yoga Fitness backend
+            # uses different Cloudinary folders.
+            printf '%s\n' "CLOUDINARY_PRODUCT_FOLDER=yoga-fitness/products"
+            printf '%s\n' "CLOUDINARY_CATEGORY_FOLDER=yoga-fitness/categories"
 
-            echo "Checking containers..."
+            # Razorpay
+            printf '%s\n' "RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}"
+            printf '%s\n' "RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}"
+            printf '%s\n' "RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}"
 
-            docker compose \
-              -f docker-compose.prod.yml \
-              ps
+          } > /tmp/yoga-fitness.production.env
 
-            echo "Checking backend..."
+          # ============================================
+          # Prepare application directory
+          # ============================================
 
-            BACKEND_STATUS=$(docker inspect \
-              --format='{{.State.Status}}' \
-              yoga-fitness-backend-prod 2>/dev/null || echo "missing")
+          echo "===== Preparing Hostinger directory ====="
 
-            if [ "$BACKEND_STATUS" != "running" ]; then
-              echo "ERROR: Backend container is not running."
+          ssh \
+            -i ~/.ssh/yoga-fitness \
+            -p "$VPS_PORT" \
+            "$VPS_USER@$VPS_HOST" \
+            "mkdir -p '$APP_DIR'"
 
-              docker compose \
-                -f docker-compose.prod.yml \
-                logs --tail=100 backend
+          # ============================================
+          # Upload source
+          # ============================================
 
-              exit 1
-            fi
+          echo "===== Uploading source archive ====="
 
-            echo "Backend is running."
+          scp \
+            -i ~/.ssh/yoga-fitness \
+            -P "$VPS_PORT" \
+            /tmp/yoga-fitness.source.tar.gz \
+            "$VPS_USER@$VPS_HOST:$APP_DIR/source.tar.gz"
 
-            echo "Checking frontend..."
+          # ============================================
+          # Upload production environment
+          # ============================================
 
-            FRONTEND_STATUS=$(docker inspect \
-              --format='{{.State.Status}}' \
-              yoga-fitness-frontend-prod 2>/dev/null || echo "missing")
+          echo "===== Uploading production environment ====="
 
-            if [ "$FRONTEND_STATUS" != "running" ]; then
-              echo "ERROR: Frontend container is not running."
+          scp \
+            -i ~/.ssh/yoga-fitness \
+            -P "$VPS_PORT" \
+            /tmp/yoga-fitness.production.env \
+            "$VPS_USER@$VPS_HOST:$APP_DIR/.env"
 
-              docker compose \
-                -f docker-compose.prod.yml \
-                logs --tail=100 frontend
+          # ============================================
+          # Deploy on Hostinger
+          # ============================================
 
-              exit 1
-            fi
+          echo "===== Running deployment on Hostinger ====="
 
-            echo "Frontend is running."
+          ssh \
+            -i ~/.ssh/yoga-fitness \
+            -p "$VPS_PORT" \
+            "$VPS_USER@$VPS_HOST" "APP_DIR='$APP_DIR' bash -s" << 'DEPLOY'
 
-            echo "Checking PostgreSQL..."
+          set -e
 
-            POSTGRES_STATUS=$(docker inspect \
-              --format='{{.State.Status}}' \
-              yoga-fitness-postgres-prod 2>/dev/null || echo "missing")
+          echo "============================================"
+          echo "      YOGA FITNESS DEPLOYMENT STARTED"
+          echo "============================================"
 
-            if [ "$POSTGRES_STATUS" != "running" ]; then
-              echo "ERROR: PostgreSQL container is not running."
+          cd "$APP_DIR"
 
-              docker compose \
-                -f docker-compose.prod.yml \
-                logs --tail=100 postgres
+          # ==========================================
+          # Extract latest source
+          # ==========================================
 
-              exit 1
-            fi
+          echo "===== Unpacking latest source ====="
 
-            echo "PostgreSQL is running."
+          tar -xzf source.tar.gz
+          rm -f source.tar.gz
 
-            echo "======================================"
-            echo "Deployment completed successfully"
-            echo "======================================"
+          # ==========================================
+          # Validate Docker Compose
+          # ==========================================
 
-            docker compose \
-              -f docker-compose.prod.yml \
-              ps
+          echo "===== Validating Docker Compose ====="
+
+          docker compose -f docker-compose.prod.yml config -q
+
+          # ==========================================
+          # Build images
+          # ==========================================
+
+          echo "===== Building Docker images ====="
+
+          docker compose \
+            -f docker-compose.prod.yml \
+            build
+
+          # ==========================================
+          # Start / recreate containers
+          # ==========================================
+
+          echo "===== Starting containers ====="
+
+          docker compose \
+            -f docker-compose.prod.yml \
+            up -d \
+            --remove-orphans
+
+          # ==========================================
+          # Show running containers
+          # ==========================================
+
+          echo "===== Running containers ====="
+
+          docker compose \
+            -f docker-compose.prod.yml \
+            ps
+
+          # ==========================================
+          # Clean dangling Docker images
+          # ==========================================
+
+          echo "===== Cleaning dangling images ====="
+
+          docker image prune -f
+
+          echo "============================================"
+          echo "      DEPLOYMENT SUCCESSFUL"
+          echo "============================================"
+
+          DEPLOY
