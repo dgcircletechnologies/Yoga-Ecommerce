@@ -58,7 +58,8 @@ jobs:
           file: ./frontend/Dockerfile.prod
           push: false
           build-args: |
-            FRONTEND_INTERNAL_PORT=3000
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            FRONTEND_INTERNAL_PORT=${{ secrets.FRONTEND_INTERNAL_PORT }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
