@@ -16,6 +16,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { ServiceBookingsModule } from './modules/service-bookings/service-bookings.module.js';
 import { CouponsModule } from './modules/coupons/coupons.module.js';
+import { MailModule } from './mail/mail.module.js';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CouponsModule } from './modules/coupons/coupons.module.js';
     AnalyticsModule,
     ServiceBookingsModule,
     CouponsModule,
+    MailModule,
   ],
 })
 export class AppModule {}

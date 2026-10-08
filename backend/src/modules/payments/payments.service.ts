@@ -8,6 +8,11 @@ import type { VerifyPaymentDto } from './dto/verify-payment.dto.js';
 import type { FailPaymentDto } from './dto/fail-payment.dto.js';
 import { ServiceBookingsService } from '../service-bookings/service-bookings.service.js';
 import { CouponsService } from '../coupons/coupons.service.js';
+import { OrdersService } from '../orders/orders.service.js';
+import type { CreateProductPaymentOrderDto } from './dto/create-product-payment-order.dto.js';
+import type { VerifyProductPaymentDto } from './dto/verify-product-payment.dto.js';
+import type { CreateServicePaymentOrderDto } from './dto/create-service-payment-order.dto.js';
+import type { VerifyServicePaymentDto } from './dto/verify-service-payment.dto.js';
 
 type User = { id: string; role: string } | undefined;
 const paymentSelect = { id: true, orderId: true, status: true, amount: true, currency: true, razorpayOrderId: true, razorpayPaymentId: true, razorpaySignature: true, transactionId: true, paymentMethod: true, failureReason: true, gatewayMetadata: true, attempt: true, createdAt: true, updatedAt: true, paidAt: true, order: { select: { id: true, userId: true, name: true, email: true, total: true, status: true, createdAt: true } } } as const;
@@ -19,13 +24,77 @@ export class PaymentsService {
   private readonly keySecret: string;
   private readonly webhookSecret?: string;
 
-  constructor(private readonly prisma: PrismaService, config: ConfigService, private readonly serviceBookings: ServiceBookingsService, private readonly coupons: CouponsService) {
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService, private readonly serviceBookings: ServiceBookingsService, private readonly coupons: CouponsService, private readonly orders: OrdersService) {
     const keyId = config.get<string>('razorpay.keyId');
     const keySecret = config.get<string>('razorpay.keySecret');
     this.keyId = keyId ?? '';
     this.keySecret = keySecret ?? '';
     this.webhookSecret = config.get<string>('razorpay.webhookSecret');
     this.razorpay = keyId && keySecret ? new Razorpay({ key_id: keyId, key_secret: keySecret }) : undefined;
+  }
+
+  async createProductOrder(dto: CreateProductPaymentOrderDto, user: User) {
+    if (dto.items.some((item) => item.type !== 'PRODUCT')) throw new ConflictException('Product checkout can contain product items only');
+    const pricing = await this.coupons.calculate(dto.items, dto.couponCode);
+    const shippingCharge = Math.max(0, Number(this.config.get<number>('orders.shippingCharge') ?? 0));
+    const total = pricing.total + shippingCharge;
+    const currency = dto.currency.toUpperCase();
+    let gatewayOrder: { id: string; amount: number; currency: string };
+    try {
+      const createdGatewayOrder = await this.client().orders.create({ amount: this.gatewayAmount(total, dto.exchangeRate), currency, receipt: `checkout-${Date.now()}`.slice(0, 40), notes: { productCheckout: 'true' } });
+      gatewayOrder = { id: createdGatewayOrder.id, amount: Number(createdGatewayOrder.amount), currency: createdGatewayOrder.currency };
+    } catch {
+      throw new ConflictException('Razorpay is unavailable. Please try again.');
+    }
+    const checkoutToken = this.signCheckout({ type: 'PRODUCT_CHECKOUT', userId: user?.id, order: dto, pricing, shippingCharge, total, razorpayOrderId: gatewayOrder.id, expiresAt: Date.now() + 30 * 60 * 1000 });
+    return { keyId: this.keyId, razorpayOrderId: gatewayOrder.id, amount: gatewayOrder.amount, currency: gatewayOrder.currency, checkoutToken };
+  }
+
+  async verifyProduct(dto: VerifyProductPaymentDto, user: User) {
+    const checkout = this.readCheckout(dto.checkoutToken);
+    if (checkout.userId && checkout.userId !== user?.id) throw new ForbiddenException('You do not have access to this checkout');
+    if (checkout.razorpayOrderId && checkout.razorpayOrderId !== dto.razorpayOrderId) throw new ConflictException('Payment order does not match the checkout');
+    const existing = await this.prisma.payment.findUnique({ where: { transactionId: dto.razorpayPaymentId }, select: paymentSelect });
+    if (existing) return { ...this.present(existing), serviceBooking: null };
+    this.verifySignature(dto.razorpayOrderId, dto.razorpayPaymentId, dto.razorpaySignature);
+    let gatewayPayment: { amount: number | string; currency: string; method?: string; status?: string };
+    try { gatewayPayment = await this.client().payments.fetch(dto.razorpayPaymentId); } catch { throw new ConflictException('Unable to confirm the Razorpay payment. Please try again.'); }
+    if (Number(gatewayPayment.amount) !== this.gatewayAmount(checkout.total, checkout.order.exchangeRate) || gatewayPayment.currency !== checkout.order.currency.toUpperCase()) throw new ConflictException('Payment amount or currency does not match the checkout');
+    const savedOrder = await this.orders.createPaid(checkout.userId, checkout.order, checkout.pricing, checkout.shippingCharge, { amount: Number(gatewayPayment.amount) / 100, currency: gatewayPayment.currency, paymentMethod: gatewayPayment.method ?? 'RAZORPAY', transactionId: dto.razorpayPaymentId, paidAt: new Date() });
+    const payment = await this.prisma.payment.findUniqueOrThrow({ where: { orderId: savedOrder.id }, select: paymentSelect });
+    return { ...this.present(payment), serviceBooking: null };
+  }
+
+  async createServiceOrder(dto: CreateServicePaymentOrderDto, user: User) {
+    const prepared = await this.serviceBookings.prepare(user?.id, dto);
+    const checkoutToken = this.signCheckout({ type: 'SERVICE_CHECKOUT', userId: user?.id, booking: dto, pricing: prepared.pricing, total: prepared.total, razorpayOrderId: '', expiresAt: Date.now() + 30 * 60 * 1000 });
+    const currency = dto.currency.toUpperCase();
+    let gatewayOrder: { id: string; amount: number; currency: string };
+    try {
+      const createdGatewayOrder = await this.client().orders.create({ amount: this.gatewayAmount(prepared.total, dto.exchangeRate), currency, receipt: `service-${Date.now()}`.slice(0, 40), notes: { serviceCheckout: 'true' } });
+      gatewayOrder = { id: createdGatewayOrder.id, amount: Number(createdGatewayOrder.amount), currency: createdGatewayOrder.currency };
+    } catch {
+      throw new ConflictException('Razorpay is unavailable. Please try again.');
+    }
+    const finalToken = this.signCheckout({ type: 'SERVICE_CHECKOUT', userId: user?.id, booking: dto, pricing: prepared.pricing, total: prepared.total, razorpayOrderId: gatewayOrder.id, expiresAt: Date.now() + 30 * 60 * 1000 });
+    return { keyId: this.keyId, razorpayOrderId: gatewayOrder.id, amount: gatewayOrder.amount, currency: gatewayOrder.currency, checkoutToken: finalToken };
+  }
+
+  async verifyService(dto: VerifyServicePaymentDto, user: User) {
+    const checkout = this.readCheckout(dto.checkoutToken);
+    if (checkout.type !== 'SERVICE_CHECKOUT') throw new ConflictException('Invalid service checkout');
+    if (checkout.userId && checkout.userId !== user?.id) throw new ForbiddenException('You do not have access to this checkout');
+    if (checkout.razorpayOrderId !== dto.razorpayOrderId) throw new ConflictException('Payment order does not match the checkout');
+    const existing = await this.prisma.payment.findUnique({ where: { transactionId: dto.razorpayPaymentId }, select: paymentSelect });
+    if (existing) return { ...this.present(existing), serviceBooking: null };
+    this.verifySignature(dto.razorpayOrderId, dto.razorpayPaymentId, dto.razorpaySignature);
+    let gatewayPayment: { amount: number | string; currency: string; method?: string; status?: string };
+    try { gatewayPayment = await this.client().payments.fetch(dto.razorpayPaymentId); } catch { throw new ConflictException('Unable to confirm the Razorpay payment. Please try again.'); }
+    if (Number(gatewayPayment.amount) !== this.gatewayAmount(checkout.total, checkout.booking.exchangeRate) || gatewayPayment.currency !== checkout.booking.currency.toUpperCase()) throw new ConflictException('Payment amount or currency does not match the checkout');
+    const booking = await this.serviceBookings.createPaid(checkout.userId, checkout.booking, checkout.pricing, { amount: Number(gatewayPayment.amount) / 100, currency: gatewayPayment.currency, paymentMethod: gatewayPayment.method ?? 'RAZORPAY', transactionId: dto.razorpayPaymentId, paidAt: new Date() });
+    const serviceBooking = await this.serviceBookings.markPaid(booking.orderId);
+    const payment = await this.prisma.payment.findUniqueOrThrow({ where: { orderId: booking.orderId }, select: paymentSelect });
+    return { ...this.present(payment), serviceBooking };
   }
 
   async createOrder(dto: CreatePaymentOrderDto, user: User) {
@@ -104,6 +173,8 @@ export class PaymentsService {
 
   private gatewayAmount(baseAmount: number, exchangeRate: number) { return Math.max(100, Math.round(baseAmount * exchangeRate * 100)); }
   private client() { if (!this.razorpay) throw new ConflictException('Razorpay is not configured'); return this.razorpay; }
+  private signCheckout(payload: Record<string, unknown>) { const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url'); return `${encoded}.${createHmac('sha256', this.config.getOrThrow<string>('jwtSecret')).update(encoded).digest('base64url')}`; }
+  private readCheckout(token: string): any { const [encoded, signature] = token.split('.'); if (!encoded || !signature) throw new ConflictException('Invalid or expired checkout'); const expected = createHmac('sha256', this.config.getOrThrow<string>('jwtSecret')).update(encoded).digest('base64url'); const a = Buffer.from(expected); const b = Buffer.from(signature); if (a.length !== b.length || !timingSafeEqual(a, b)) throw new ConflictException('Invalid or expired checkout'); let payload: any; try { payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); } catch { throw new ConflictException('Invalid or expired checkout'); } if (!['PRODUCT_CHECKOUT', 'SERVICE_CHECKOUT'].includes(payload.type) || !payload.expiresAt || payload.expiresAt < Date.now()) throw new ConflictException('Checkout has expired'); return payload; }
   private verifySignature(orderId: string, paymentId: string, signature: string) { this.verifyHmac(`${orderId}|${paymentId}`, signature, this.keySecret); }
   private verifyHmac(payload: string, signature: string, secret: string) { const expected = createHmac('sha256', secret).update(payload).digest('hex'); const a = Buffer.from(expected); const b = Buffer.from(signature); if (a.length !== b.length || !timingSafeEqual(a, b)) throw new UnauthorizedException('Invalid payment signature'); }
   private present(payment: any) { return { ...payment, amount: Number(payment.amount), order: payment.order ? { ...payment.order, total: Number(payment.order.total) } : undefined }; }

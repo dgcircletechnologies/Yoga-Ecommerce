@@ -61,6 +61,11 @@ function ProductDetails({ product }: { product: Product }) {
               </div>
             </div>
             <div className="mt-12"><h2 className="text-2xl">Tags</h2><div className="mt-5 flex flex-wrap gap-3"><Link className="text-brand-purple transition-colors hover:text-brand-dark" href="/products">{product.category}</Link><Link className="text-brand-purple transition-colors hover:text-brand-dark" href="/products">Yoga essentials</Link><Link className="text-brand-purple transition-colors hover:text-brand-dark" href="/products">Mindful living</Link></div></div>
+            <div className="mt-10 border-t border-black/10 pt-8">
+              <h2 className="text-2xl">Return Policy</h2>
+              <p className="mt-4 text-sm leading-7 text-black">Unused products may be returned within 14 days of delivery in their original packaging. Please contact us before sending anything back so we can guide you through the return process.</p>
+              <p className="mt-3 text-sm leading-7 text-black">Return shipping is the customer&apos;s responsibility unless the item arrives damaged or incorrect. Refunds are issued after the returned product has been inspected.</p>
+            </div>
           </aside>
 
           <section className="order-3 lg:col-start-1 lg:row-start-2">

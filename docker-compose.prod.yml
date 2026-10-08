@@ -2,84 +2,140 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
+        FRONTEND_INTERNAL_PORT: ${FRONTEND_INTERNAL_PORT:?FRONTEND_INTERNAL_PORT must be set}
+
+    container_name: yoga-fitness-frontend-prod
+
+    restart: unless-stopped
+
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_INTERNAL_PORT}"
+
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
       INTERNAL_API_URL: ${INTERNAL_API_URL:?INTERNAL_API_URL must be set}
       PORT: ${FRONTEND_INTERNAL_PORT:?FRONTEND_INTERNAL_PORT must be set}
       NEXT_PUBLIC_RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
-      WATCHPACK_POLLING: "true"
-      CHOKIDAR_USEPOLLING: "true"
-    volumes:
-      - ./frontend:/app
-      # Version this volume when dependencies change so an old volume cannot
-      # hide packages installed by the image.
-      - frontend_node_modules_v2:/app/node_modules
-      - frontend_next:/app/.next
-    command: sh -c "npm ci && npm run dev -- --hostname 0.0.0.0 --port $${PORT}"
+
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+
+    networks:
+      - yoga-fitness-network
+
 
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
+      args:
+        BACKEND_INTERNAL_PORT: ${BACKEND_INTERNAL_PORT:?BACKEND_INTERNAL_PORT must be set}
+
+    container_name: yoga-fitness-backend-prod
+
+    restart: unless-stopped
+
     ports:
       - "${BACKEND_PORT}:${BACKEND_INTERNAL_PORT}"
+
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: ${BACKEND_INTERNAL_PORT:?BACKEND_INTERNAL_PORT must be set}
       BACKEND_HOST: ${BACKEND_HOST:?BACKEND_HOST must be set}
       BACKEND_INTERNAL_PORT: ${BACKEND_INTERNAL_PORT:?BACKEND_INTERNAL_PORT must be set}
+
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in the root .env file}
+
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
-      ADMIN_URL: ${ADMIN_URL:-${FRONTEND_URL}/admin}
-      MAIL_HOST: ${MAIL_HOST:-}
+      ADMIN_URL: ${ADMIN_URL:?ADMIN_URL must be set}
+
+      MAIL_HOST: ${MAIL_HOST:?MAIL_HOST must be set}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_SECURE: ${MAIL_SECURE:-false}
-      MAIL_USER: ${MAIL_USER:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-}
+      MAIL_USER: ${MAIL_USER:?MAIL_USER must be set}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD must be set}
+      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:?MAIL_FROM_EMAIL must be set}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Yoga Fitness}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL must be set}
+
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
       CLOUDINARY_PRODUCT_FOLDER: ${CLOUDINARY_PRODUCT_FOLDER:-yoga_ecommerce}
+
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
     depends_on:
       postgres:
         condition: service_healthy
 
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://$${BACKEND_HOST}:$${BACKEND_INTERNAL_PORT}/health || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - yoga-fitness-network
+
+
   postgres:
     image: postgres:17-alpine
-    ports:
-      - "${POSTGRES_PORT}:5432"
+
+    container_name: yoga-fitness-postgres-prod
+
+    restart: unless-stopped
+
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
+
+    networks:
+      - yoga-fitness-network
+
 
 volumes:
   postgres_data:
-  frontend_node_modules_v2:
-  frontend_next:
+    name: yoga-fitness-postgres-data
+
+
+networks:
+  yoga-fitness-network:
+    name: yoga-fitness-network
+    driver: bridge

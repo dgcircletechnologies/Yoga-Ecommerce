@@ -1,0 +1,229 @@
+name: Deploy Yoga Fitness to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+concurrency:
+  group: yoga-fitness-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate production files
+        run: |
+          set -e
+
+          echo "Checking production files..."
+
+          test -f docker-compose.prod.yml
+          test -f frontend/Dockerfile.prod
+          test -f backend/Dockerfile.prod
+
+          echo "Production files validated."
+
+      - name: Create deployment archive
+        run: |
+          set -e
+
+          echo "Creating deployment archive..."
+
+          tar \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='frontend/.next' \
+            --exclude='backend/dist' \
+            --exclude='.env' \
+            -czf yoga-fitness-deploy.tar.gz .
+
+          echo "Deployment archive created."
+
+      - name: Upload application to Hostinger
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USERNAME }}
+          password: ${{ secrets.HOSTINGER_PASSWORD }}
+          port: 22
+          source: "yoga-fitness-deploy.tar.gz"
+          target: "/tmp"
+
+      - name: Deploy application on Hostinger
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USERNAME }}
+          password: ${{ secrets.HOSTINGER_PASSWORD }}
+          port: 22
+
+          script: |
+            set -e
+
+            APP_DIR="/root/yoga-fitness"
+            ARCHIVE="/tmp/yoga-fitness-deploy.tar.gz"
+
+            echo "======================================"
+            echo "Yoga Fitness Production Deployment"
+            echo "======================================"
+
+            echo "Creating application directory..."
+
+            mkdir -p "$APP_DIR"
+
+            echo "Extracting deployment..."
+
+            tar -xzf "$ARCHIVE" -C "$APP_DIR"
+
+            rm -f "$ARCHIVE"
+
+            cd "$APP_DIR"
+
+            echo "Creating production environment file..."
+
+            cat > .env <<'EOF'
+            FRONTEND_PORT=5002
+            BACKEND_PORT=9001
+            BACKEND_INTERNAL_PORT=3000
+            FRONTEND_INTERNAL_PORT=3000
+            BACKEND_HOST=localhost
+            BACKEND_SERVICE_HOST=backend
+
+            POSTGRES_DB=${{ secrets.HOSTINGER_PASSWORD }}
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            ADMIN_URL=${{ secrets.ADMIN_URL }}
+
+            MAIL_HOST=${{ secrets.MAIL_HOST }}
+            MAIL_PORT=${{ secrets.MAIL_PORT }}
+            MAIL_SECURE=${{ secrets.MAIL_SECURE }}
+            MAIL_USER=${{ secrets.MAIL_USER }}
+            MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+            MAIL_FROM_EMAIL=${{ secrets.MAIL_FROM_EMAIL }}
+            MAIL_FROM_NAME=${{ secrets.MAIL_FROM_NAME }}
+            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            CLOUDINARY_PRODUCT_FOLDER=${{ secrets.CLOUDINARY_PRODUCT_FOLDER }}
+
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            INTERNAL_API_URL=${{ secrets.INTERNAL_API_URL }}
+
+            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
+            RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+            EOF
+
+            chmod 600 .env
+
+            echo "Production environment created."
+
+            echo "Checking Docker..."
+
+            docker --version
+            docker compose version
+
+            echo "Validating Docker Compose..."
+
+            docker compose \
+              -f docker-compose.prod.yml \
+              config -q
+
+            echo "Docker Compose configuration is valid."
+
+            echo "Building and starting production containers..."
+
+            docker compose \
+              -f docker-compose.prod.yml \
+              up -d \
+              --build \
+              --remove-orphans
+
+            echo "Waiting for containers..."
+
+            sleep 10
+
+            echo "Checking container status..."
+
+            docker compose \
+              -f docker-compose.prod.yml \
+              ps
+
+            echo "Checking backend..."
+
+            BACKEND_STATUS=$(docker inspect \
+              --format='{{.State.Status}}' \
+              yoga-fitness-backend-prod 2>/dev/null || echo "missing")
+
+            if [ "$BACKEND_STATUS" != "running" ]; then
+              echo "ERROR: Backend container is not running."
+
+              docker compose \
+                -f docker-compose.prod.yml \
+                logs --tail=100 backend
+
+              exit 1
+            fi
+
+            echo "Backend is running."
+
+            echo "Checking frontend..."
+
+            FRONTEND_STATUS=$(docker inspect \
+              --format='{{.State.Status}}' \
+              yoga-fitness-frontend-prod 2>/dev/null || echo "missing")
+
+            if [ "$FRONTEND_STATUS" != "running" ]; then
+              echo "ERROR: Frontend container is not running."
+
+              docker compose \
+                -f docker-compose.prod.yml \
+                logs --tail=100 frontend
+
+              exit 1
+            fi
+
+            echo "Frontend is running."
+
+            echo "Checking PostgreSQL..."
+
+            POSTGRES_STATUS=$(docker inspect \
+              --format='{{.State.Status}}' \
+              yoga-fitness-postgres-prod 2>/dev/null || echo "missing")
+
+            if [ "$POSTGRES_STATUS" != "running" ]; then
+              echo "ERROR: PostgreSQL container is not running."
+
+              docker compose \
+                -f docker-compose.prod.yml \
+                logs --tail=100 postgres
+
+              exit 1
+            fi
+
+            echo "PostgreSQL is running."
+
+            echo "======================================"
+            echo "Deployment completed successfully"
+            echo "======================================"
+
+            docker compose \
+              -f docker-compose.prod.yml \
+              ps

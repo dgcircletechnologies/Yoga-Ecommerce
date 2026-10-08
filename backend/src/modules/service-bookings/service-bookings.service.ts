@@ -5,12 +5,17 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { CloudinaryService } from '../../cloudinary/cloudinary.service.js';
 import type { CreateServiceBookingDto } from './dto/create-service-booking.dto.js';
 import { CouponsService } from '../coupons/coupons.service.js';
+import { BookingEmailService } from './booking-email.service.js';
 
 @Injectable()
 export class ServiceBookingsService {
-  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService, private readonly cloudinary: CloudinaryService, private readonly coupons: CouponsService) {}
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService, private readonly cloudinary: CloudinaryService, private readonly coupons: CouponsService, private readonly bookingEmails: BookingEmailService) {}
 
-  async create(customerId: string | undefined, dto: CreateServiceBookingDto) {
+  async create(_customerId: string | undefined, _dto: CreateServiceBookingDto) {
+    throw new ConflictException('Service bookings are created only after successful payment');
+  }
+
+  async prepare(customerId: string | undefined, dto: CreateServiceBookingDto) {
     const service = await this.prisma.service.findUnique({ where: { id: dto.serviceId }, include: { trainer: true } });
     if (!service || service.status !== 'ACTIVE') throw new NotFoundException('Service is not available');
     const trainerId = service.trainerId;
@@ -41,17 +46,36 @@ export class ServiceBookingsService {
     if (conflict) throw new ConflictException('One or more selected times are no longer available');
     const quantity = slots.length; const pricing = await this.coupons.calculate([{ type: 'SERVICE', serviceId: service.id, quantity }], dto.couponCode); const total = pricing.total;
     if (!customerId && (!dto.name || !dto.email)) throw new BadRequestException('Name and email are required for guest bookings');
+    return { pricing, total };
+  }
+
+  async createPaid(customerId: string | undefined, dto: CreateServiceBookingDto, pricing: any, payment: { amount: number; currency: string; paymentMethod: string; transactionId: string; paidAt: Date }) {
+    const service = await this.prisma.service.findUnique({ where: { id: dto.serviceId }, include: { trainer: true } });
+    if (!service || service.status !== 'ACTIVE') throw new NotFoundException('Service is not available');
+    const trainerId = service.trainerId;
+    if (!trainerId || !service.trainer || service.trainer.role !== 'TRAINER') throw new ConflictException('This service has no assigned trainer');
+    const slots = dto.sessions.map((session) => this.toDate(session.date, session.time));
+    if (new Set(slots.map((slot) => slot.toISOString())).size !== slots.length) throw new ConflictException('Each session must use a different date and time');
+    const tomorrow = new Date(); tomorrow.setUTCHours(0, 0, 0, 0); tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    if (slots.some((slot) => slot < tomorrow)) throw new ConflictException('Sessions can only be scheduled from tomorrow onward');
+    const conflict = await this.prisma.serviceSession.findFirst({ where: { scheduledAt: { in: slots }, status: { not: 'CANCELLED' }, booking: { trainerId, status: { not: 'CANCELLED' } } }, select: { id: true } });
+    if (conflict) throw new ConflictException('One or more selected times are no longer available');
+    const quantity = slots.length;
+    const total = pricing.total;
+    if (!customerId && (!dto.name || !dto.email)) throw new BadRequestException('Name and email are required for guest bookings');
     const user = customerId
       ? await this.prisma.user.findUnique({ where: { id: customerId }, select: { id: true, name: true, email: true, phone: true } })
       : await this.prisma.user.upsert({ where: { email: dto.email!.trim().toLowerCase() }, update: { name: dto.name!.trim(), phone: dto.phone?.trim() }, create: { name: dto.name!.trim(), email: dto.email!.trim().toLowerCase(), phone: dto.phone?.trim(), password: null, role: 'USER' }, select: { id: true, name: true, email: true, phone: true } });
     if (!user) throw new NotFoundException('Customer not found');
     const booking = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({ data: { userId: user.id, name: user.name, email: user.email, phone: user.phone, address: dto.address, city: dto.city, state: dto.state, country: dto.country, postalCode: dto.postalCode, subtotal: pricing.subtotal, discount: 0, total, couponId: pricing.coupon?.id, couponCode: pricing.coupon?.code, couponDiscountType: pricing.coupon?.discountType, couponDiscountValue: pricing.coupon?.discountValue, couponDiscountAmount: pricing.coupon ? pricing.discountAmount : null, items: { create: { serviceId: service.id, type: 'SERVICE', name: service.name, price: Number(service.price), quantity, discount: 0, total: Number(service.price) * quantity } } }, select: { id: true } });
-      await tx.payment.create({ data: { orderId: order.id, amount: total, currency: 'USD' } });
+      await tx.payment.create({ data: { orderId: order.id, amount: payment.amount, currency: payment.currency, status: 'PAID', paymentMethod: payment.paymentMethod, transactionId: payment.transactionId, paidAt: payment.paidAt } });
       await tx.orderStatusHistory.create({ data: { orderId: order.id, fromStatus: null, toStatus: 'new' } });
+      await this.coupons.finalizeUsage(order.id, tx);
       return tx.serviceBooking.create({ data: { orderId: order.id, serviceId: service.id, trainerId, customerId: user.id, quantity, pricePerSession: service.price, totalAmount: total, address: dto.address, city: dto.city, state: dto.state, country: dto.country, postalCode: dto.postalCode, sessions: { create: slots.map((scheduledAt) => ({ scheduledAt })) } }, include: { sessions: true } });
     });
     await this.prisma.serviceBookingAction.create({ data: { bookingId: booking.id, action: 'BOOKING_CREATED', actorType: customerId ? 'CUSTOMER' : 'SYSTEM', performedBy: customerId, description: 'Service booking created and sessions scheduled.' } });
+    await this.bookingEmails.sendNewBookingToAdmin(booking.id);
     return { id: booking.id, orderId: booking.orderId, quantity: booking.quantity, pricePerSession: Number(booking.pricePerSession), totalAmount: Number(booking.totalAmount), status: booking.status, sessions: booking.sessions };
   }
 
@@ -63,7 +87,7 @@ export class ServiceBookingsService {
   }
   async get(id: string, user: { id: string; role: string }) { const row = await this.prisma.serviceBooking.findUnique({ where: { id }, include: { service: { select: { name: true, imageUrl: true } }, trainer: { select: { id: true, name: true, profileImageUrl: true } }, sessions: { orderBy: { scheduledAt: 'asc' } }, order: { select: { userId: true, payment: { select: { status: true } } } } } }); if (!row || (user.role !== 'ADMIN' && row.customerId !== user.id)) throw new NotFoundException('Service booking not found'); return this.present(row, user.role !== 'ADMIN'); }
 
-  async markPaid(orderId: string) { const booking = await this.prisma.serviceBooking.findUnique({ where: { orderId } }); if (!booking || !['PENDING_PAYMENT', 'CANCELLED'].includes(booking.status)) return null; const otp = String(randomInt(100000, 1000000)); const updated = await this.prisma.serviceBooking.update({ where: { id: booking.id }, data: { status: 'PENDING', otp: null, otpEncrypted: this.encryptOtp(otp), otpHash: createHash('sha256').update(otp).digest('hex'), otpExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), otpAttempts: 0, otpBlockedUntil: null, otpVerifiedAt: null, verifiedBy: null }, include: { sessions: true } }); return { bookingId: updated.id, otp, sessions: updated.sessions }; }
+  async markPaid(orderId: string) { const booking = await this.prisma.serviceBooking.findUnique({ where: { orderId } }); if (!booking || !['PENDING_PAYMENT', 'CANCELLED'].includes(booking.status)) return null; const otp = String(randomInt(100000, 1000000)); const updated = await this.prisma.serviceBooking.update({ where: { id: booking.id }, data: { status: 'PENDING', otp: null, otpEncrypted: this.encryptOtp(otp), otpHash: createHash('sha256').update(otp).digest('hex'), otpExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), otpAttempts: 0, otpBlockedUntil: null, otpVerifiedAt: null, verifiedBy: null }, include: { sessions: true } }); await this.bookingEmails.sendBookingConfirmationToCustomer(updated.id, otp); return { bookingId: updated.id, otp, sessions: updated.sessions }; }
 
   async trainerBookings(trainerId: string, filter: 'all' | 'pending' | 'history' = 'all') {
     const where: any = { trainerId, status: filter === 'pending' ? 'PENDING' : filter === 'history' ? { in: ['PAID', 'CONFIRMED', 'SCHEDULED', 'COMPLETED', 'CANCELLED'] } : { not: 'PENDING_PAYMENT' } };
@@ -123,6 +147,7 @@ export class ServiceBookingsService {
         await tx.serviceBookingAction.create({ data: { bookingId: row.id, action: 'TRAINER_CONFIRMED', performedBy: trainerId, actorType: 'TRAINER', description: uploaded.length ? `Booking confirmed through OTP verification with ${uploaded.length} scene image${uploaded.length === 1 ? '' : 's'} uploaded.` : 'Booking confirmed through OTP verification without scene images.' } });
         return tx.serviceBooking.findUniqueOrThrow({ where: { id: row.id }, select: { id: true, status: true, otpVerifiedAt: true, sceneImages: true } });
       });
+      await this.bookingEmails.sendSessionConfirmed(updated.id, now);
       return { id: updated.id, status: updated.status, verifiedAt: updated.otpVerifiedAt, sceneImages: updated.sceneImages };
     } catch (error) {
       await Promise.all(uploaded.map((image) => this.cleanupImage(image.imagePublicId)));
@@ -226,6 +251,7 @@ export class ServiceBookingsService {
       await tx.serviceBookingAction.create({ data: { bookingId: id, action: decision === 'APPROVED' ? 'ADMIN_APPROVED' : 'ADMIN_REJECTED', performedBy: adminId, actorType: 'ADMIN', description: decision === 'APPROVED' ? 'Trainer confirmation and uploaded evidence approved by admin.' : `Booking rejected by admin: ${reason!.trim()}`, metadata: decision === 'REJECTED' ? { reason: reason!.trim() } : undefined } });
       return row;
     });
+    if (current.adminReviewStatus !== decision) await this.bookingEmails.sendSessionReviewed(id, decision, now, decision === 'REJECTED' ? reason!.trim() : undefined);
     return this.presentAdmin(updated);
   }
 
@@ -250,7 +276,7 @@ export class ServiceBookingsService {
   }
 
   private async ensureBooking(id: string) {
-    const row = await this.prisma.serviceBooking.findUnique({ where: { id }, select: { id: true, otpVerifiedAt: true, sceneImages: true } });
+    const row = await this.prisma.serviceBooking.findUnique({ where: { id }, select: { id: true, otpVerifiedAt: true, sceneImages: true, adminReviewStatus: true } });
     if (!row) throw new NotFoundException('Service booking not found');
     return row;
   }

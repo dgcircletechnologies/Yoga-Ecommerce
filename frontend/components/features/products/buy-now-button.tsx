@@ -6,8 +6,7 @@ import { PurchaseCustomerForm } from "@/components/purchase/purchase-customer-fo
 import type { CheckoutDetails } from "@/components/checkout/checkout-page";
 import { checkoutDetailsFromUser } from "@/lib/checkout/customer-details";
 import { ArrowIcon } from "@/components/ui/icons";
-import { createOrder } from "@/api/orders.api";
-import { beginPayment, PaymentFlowError } from "@/lib/checkout/payment-service";
+import { beginProductPayment } from "@/lib/checkout/payment-service";
 import { usdPrice, useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/hooks/use-auth";
 import type { Product } from "@/types/product";
@@ -25,22 +24,24 @@ export function BuyNowButton({ product }: { product: Product }) {
   async function submitPurchase(values: CheckoutDetails) {
     setError("");
     try {
-      const order = await createOrder({
+      const result = await beginProductPayment({
         name: values.name, email: values.email, phone: values.phone,
+        countryCode: values.phoneCountry,
         address: [values.address1, values.address2].filter(Boolean).join(", "),
         city: values.city, state: values.state, country: values.country, postalCode: values.postalCode,
-        currency, couponCode: coupon?.couponCode,
+        currency, exchangeRate, couponCode: coupon?.couponCode,
         items: [{ type: "PRODUCT", productId: product.id, quantity: 1 }],
       });
       sessionStorage.setItem("sattva-payment-email", values.email);
       sessionStorage.setItem("sattva-payment-currency", JSON.stringify({ currency, exchangeRate }));
-      const result = await beginPayment({ orderId: order.id, email: values.email, currency, exchangeRate });
-      setIsOpen(false);
-      router.push(`/checkout/payment?orderId=${encodeURIComponent(order.id)}&status=${result}`);
+      if (result.status === "success" && result.orderId) {
+        setIsOpen(false);
+        router.push(`/checkout/payment?orderId=${encodeURIComponent(result.orderId)}&status=success`);
+      } else if (result.status === "failed") {
+        setError("Payment was not completed. No order was created.");
+      }
     } catch (requestError) {
-      const paymentError = requestError as Partial<PaymentFlowError>;
-      if (paymentError.orderId) router.push(`/checkout/payment?orderId=${encodeURIComponent(paymentError.orderId)}&status=failed`);
-      else setError(requestError instanceof Error ? requestError.message : "Unable to prepare your product payment.");
+      setError(requestError instanceof Error ? requestError.message : "Unable to prepare your product payment.");
     }
   }
 

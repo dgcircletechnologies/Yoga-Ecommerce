@@ -1,21 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAdminOrderHistory, getOrder } from "@/api/orders.api";
+import { siteInfo } from "@/lib/site-info";
 import { statusLabel, type Order, type OrderStatusHistory } from "@/types/order";
+import { StatusIcon } from "@/components/orders/status-icon";
+import { Mail, Phone } from "@deemlol/next-icons";
 
 const date = (value: string, withTime = true) => new Intl.DateTimeFormat("en-US", withTime ? { dateStyle: "long", timeStyle: "short" } : { dateStyle: "long" }).format(new Date(value));
+const statusDate = (value: string) => new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 const money = (value?: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value ?? 0);
 
-export function OrderPrintDocument({ id }: { id: string }) {
-  const [order, setOrder] = useState<Order>();
-  const [history, setHistory] = useState<OrderStatusHistory[]>([]);
+export function OrderPrintDocument({ id, order: initialOrder, history: initialHistory, className = "" }: { id?: string; order?: Order; history?: OrderStatusHistory[]; className?: string }) {
+  const [order, setOrder] = useState<Order | undefined>(initialOrder);
+  const [history, setHistory] = useState<OrderStatusHistory[]>(initialHistory ?? []);
   const [error, setError] = useState("");
-  useEffect(() => { Promise.all([getOrder(id), getAdminOrderHistory(id)]).then(([nextOrder, nextHistory]) => { setOrder(nextOrder); setHistory(nextHistory); setTimeout(() => window.print(), 250); }).catch((reason) => setError(reason instanceof Error ? reason.message : "Unable to load order.")); }, [id]);
-  if (error) return <main className="print-order-page"><p>{error}</p></main>;
-  if (!order) return <main className="print-order-page"><p>Loading order…</p></main>;
-  const phone = order.customer.phone || "Not provided";
-  const shippingAddress = [order.shippingAddress?.addressLine1, order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.postalCode, order.shippingAddress?.country].filter(Boolean).join("\n") || order.customer.address || "Not provided";
-  order.customer.address = shippingAddress;
-  return <main className="print-order-page"><header className="print-header"><div><p className="eyebrow">Sattva Yoga</p><h1>ORDER</h1><p>Order #: {order.id}</p><p>Order Date: {date(order.createdAt, false)}</p></div><div className="print-status"><span>Current Status</span><strong>{statusLabel(order.status).toUpperCase()}</strong></div></header><section className="print-grid"><div><h2>Customer Information</h2><p><strong>{order.customer.name}</strong><br />{order.customer.email}<br />{phone}</p></div><div><h2>Shipping Address</h2><p>{order.customer.name}<br />{order.customer.address || "Not provided"}<br />Phone: {phone}</p></div></section><section><h2>Order Items</h2><table><thead><tr><th>Item</th><th>Type</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead><tbody>{order.items.map((item, index) => <tr key={`${item.name}-${index}`}><td>{item.name}{item.sessions ? <small> · {item.sessions} sessions</small> : null}</td><td>{item.type ?? "—"}</td><td>{item.quantity}</td><td>{money(item.price)}</td><td>{money(item.total)}</td></tr>)}</tbody></table></section><section className="summary"><h2>Order Summary</h2><p><span>Subtotal</span><strong>{money(order.subtotal)}</strong></p>{(order.discount ?? 0) > 0 && <p><span>Discount</span><strong>-{money(order.discount)}</strong></p>}{order.couponDiscountAmount !== undefined && <p><span>Coupon {order.couponCode ?? ""}</span><strong>-{money(order.couponDiscountAmount)}</strong></p>}<p><span>Shipping</span><strong>{money(order.shippingCharge)}</strong></p><p className="grand-total"><span>Grand Total</span><strong>{money(order.totalAmount)}</strong></p></section><section><h2>Payment Information</h2><p>Payment status: {order.paymentStatus}<br />Currency: {order.currency ?? "USD"}</p></section><section><h2>Order Status History</h2>{history.length ? <table><thead><tr><th>Status</th><th>Date / time</th></tr></thead><tbody>{history.map((event) => <tr key={event.id} className={event.toStatus === order.status ? "current-row" : ""}><td>{event.fromStatus ? `${statusLabel(event.fromStatus)} → ` : "Order Created → "}{statusLabel(event.toStatus)}</td><td>{date(event.createdAt)}</td></tr>)}</tbody></table> : <p>No status history available.</p>}</section><style>{`body{background:#fff;color:#111}.print-order-page{max-width:900px;margin:0 auto;padding:40px;font:13px/1.5 Arial,sans-serif}.print-header{display:flex;justify-content:space-between;gap:24px;border-bottom:2px solid #111;padding-bottom:24px}.print-header h1{font-size:30px;letter-spacing:.14em;margin:8px 0}.print-header p{margin:2px 0}.eyebrow,.print-status span,h2{font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:700}.print-status{text-align:right}.print-status strong{display:block;margin-top:7px;font-size:16px}.print-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px}.print-order-page section{margin-top:28px}.print-order-page h2{border-bottom:1px solid #bbb;padding-bottom:8px;margin:0 0 12px}.print-order-page p{margin:0}.print-order-page table{border-collapse:collapse;width:100%}.print-order-page th,.print-order-page td{border-bottom:1px solid #ddd;padding:9px 7px;text-align:left;vertical-align:top}.print-order-page th{font-size:10px;text-transform:uppercase}.print-order-page td:nth-child(n+3),.print-order-page th:nth-child(n+3){text-align:right}.summary{margin-left:auto;max-width:360px}.summary p{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:6px 0}.summary .grand-total{border-top:2px solid #111;border-bottom:0;font-size:16px;font-weight:700;margin-top:7px}.current-row{font-weight:700}.print-order-page small{display:block;color:#555}@media print{.print-order-page{max-width:none;padding:0}.print-order-page section,.print-order-page tr{break-inside:avoid}.print-order-page h2{break-after:avoid}body{margin:0}}@media(max-width:640px){.print-order-page{padding:20px}.print-grid{grid-template-columns:1fr}.print-header{display:block}.print-status{text-align:left;margin-top:20px}}`}</style></main>;
+  const printed = useRef(false);
+
+  useEffect(() => {
+    if (initialOrder) { setOrder(initialOrder); setHistory(initialHistory ?? []); return; }
+    if (!id) return;
+    let cancelled = false;
+    Promise.all([getOrder(id), getAdminOrderHistory(id)]).then(([nextOrder, nextHistory]) => {
+      if (cancelled) return;
+      setOrder(nextOrder);
+      setHistory(nextHistory);
+      if (!printed.current) { printed.current = true; window.setTimeout(() => window.print(), 300); }
+    }).catch((reason) => { if (!cancelled) setError(reason instanceof Error ? reason.message : "Unable to load order."); });
+    return () => { cancelled = true; };
+  }, [id, initialHistory, initialOrder]);
+
+  if (error) return <main className={`print-document ${className}`}><p>{error}</p></main>;
+  if (!order) return <main className={`print-document ${className}`}><p>Loading order…</p></main>;
+
+  const phone = order.customer.phone || "Phone not provided";
+  const shippingAddress = [order.shippingAddress?.addressLine1, order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.postalCode, order.shippingAddress?.country].filter(Boolean).join(", ") || order.customer.address || "Not provided";
+  const shippingLabel = order.shippingCharge ? money(order.shippingCharge) : "Shipping included in cost";
+  const timeline = history.length ? history : [{ id: `created-${order.id}`, orderId: order.id, fromStatus: null, toStatus: order.status, createdAt: order.createdAt }];
+  const current = timeline[timeline.length - 1];
+  const previous = timeline.length > 1 ? timeline[timeline.length - 2] : null;
+
+  return <main className={`print-document ${className}`}>
+    <header className="print-header"><div className="print-brand"><img alt={siteInfo.name} src={siteInfo.logo} /><div><p className="print-kicker">{siteInfo.name}</p><p className="print-contact"><span><Mail aria-hidden size={13} />{siteInfo.email}</span><span><Phone aria-hidden size={13} />{siteInfo.phone}</span></p></div></div><div className="print-header-detail"><p className="print-kicker">Product order</p><h1>Order receipt</h1><p>Order: <strong>{order.id}</strong></p><p>Placed: {date(order.createdAt, false)}</p></div></header>
+    <div className="print-order-grid">
+      <div className="print-left-column">
+        <section className="print-panel print-status-panel"><h2 className="print-section-title">Current status</h2><div className="print-status-pair print-current-status"><StatusIcon status={current.toStatus} /><div><strong>{statusLabel(current.toStatus)}</strong><span>Current status</span><small>{statusDate(current.createdAt)}</small></div></div>{previous && <div className="print-previous-status"><span className="print-label">Previous status</span><div className="print-status-pair"><StatusIcon status={previous.toStatus} /><div><strong>{statusLabel(previous.toStatus)}</strong><small>{statusDate(previous.createdAt)}</small></div></div></div>}</section>
+        <section className="print-panel print-history-panel"><h2 className="print-section-title">Order status history</h2><div className="print-vertical-timeline">{[...timeline].reverse().map((event, index, events) => <div className={`print-history-item ${index === 0 ? "is-current" : ""}`} key={event.id}><div className="print-history-marker"><StatusIcon status={event.toStatus} /></div>{index < events.length - 1 && <span className="print-history-line" />}<div className="print-history-content"><strong>{statusLabel(event.toStatus)}</strong><span>{event.fromStatus ? `${statusLabel(event.fromStatus)} → ` : "Order placed · "}{statusDate(event.createdAt)}</span></div></div>)}</div></section>
+      </div>
+      <div className="print-right-column">
+        <section className="print-panel print-items-panel"><h2 className="print-section-title">Item details</h2><div className="print-items-list">{order.items.map((item, index) => <article className="print-item" key={`${item.name}-${index}`}>{item.image ? <img alt="" className="print-product-image" src={item.image} /> : <div className="print-product-placeholder">—</div>}<div className="print-item-content"><strong>{item.name}</strong><span>{item.type ?? "Product"} · Qty {item.quantity}</span><span>Unit price: {money(item.price)} · Subtotal: {money(item.total)}</span></div></article>)}</div><div className="print-total"><div><span>Subtotal</span><strong>{money(order.subtotal)}</strong></div>{(order.discount ?? 0) > 0 && <div><span>Discount</span><strong>-{money(order.discount)}</strong></div>}{order.couponDiscountAmount !== undefined && <div><span>Offer {order.couponCode ?? ""}</span><strong>-{money(order.couponDiscountAmount)}</strong></div>}<div><span>Shipping</span><strong>{shippingLabel}</strong></div><div className="print-grand-total"><span>Total</span><strong>{money(order.totalAmount)}</strong></div></div></section>
+        <section className="print-panel print-details-panel"><div className="print-details-columns"><div><h2 className="print-section-title">Customer details</h2><p className="print-detail-text"><strong>{order.customer.name}</strong><span className="print-contact-line"><Mail aria-hidden size={13} />{order.customer.email}</span><span className="print-contact-line"><Phone aria-hidden size={13} />{phone}</span></p></div><div><h2 className="print-section-title">Shipping address</h2><p className="print-detail-text"><strong>{order.customer.name}</strong><span>{shippingAddress}</span><span className="print-contact-line"><Phone aria-hidden size={13} />{phone}</span></p></div></div><div className="print-payment-row"><span>Payment status <strong>{order.paymentStatus}</strong></span><span>Currency <strong>{order.currency ?? "USD"}</strong></span></div></section><p className="print-policy print-return-policy"><strong>Return policy:</strong> Returns are not possible after delivery unless the item arrives damaged. Please contact support within 24 hours.</p>
+      </div>
+    </div>
+    <footer className="print-footer"><span>Thank you for choosing {siteInfo.name}.</span><span>{siteInfo.email} · {siteInfo.phone}</span></footer>
+  </main>;
 }

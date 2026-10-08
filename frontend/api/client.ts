@@ -1,7 +1,10 @@
 import { getToken, removeToken } from "@/utils/auth";
 
-const PUBLIC_API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1").replace(/\/$/, "");
-const SERVER_API_URL = (process.env.INTERNAL_API_URL ?? PUBLIC_API_URL).replace(/\/$/, "");
+const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+const SERVER_API_URL = process.env.INTERNAL_API_URL?.replace(/\/$/, "") ?? PUBLIC_API_URL;
+
+if (!PUBLIC_API_URL) throw new Error("NEXT_PUBLIC_API_URL is required");
+if (!SERVER_API_URL) throw new Error("INTERNAL_API_URL or NEXT_PUBLIC_API_URL is required");
 
 type ApiError = { message?: string | string[] };
 

@@ -1,13 +1,10 @@
 export default () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
-  port: Number(process.env.PORT ?? 3000),
+  port: Number(process.env.PORT),
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '15m',
-  corsOrigin:
-    process.env.FRONTEND_URL ??
-    process.env.CORS_ORIGIN ??
-    'http://localhost:3000',
+  corsOrigin: process.env.FRONTEND_URL ?? process.env.CORS_ORIGIN,
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
@@ -16,4 +13,16 @@ export default () => ({
   },
   razorpay: { keyId: process.env.RAZORPAY_KEY_ID, keySecret: process.env.RAZORPAY_KEY_SECRET, webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET },
   orders: { shippingCharge: Number(process.env.DEFAULT_SHIPPING_CHARGE ?? 0) },
+  mail: {
+    host: process.env.MAIL_HOST,
+    port: Number(process.env.MAIL_PORT ?? 587),
+    secure: process.env.MAIL_SECURE === 'true',
+    user: process.env.MAIL_USER,
+    password: process.env.MAIL_PASSWORD,
+    fromEmail: process.env.MAIL_FROM_EMAIL,
+    fromName: process.env.MAIL_FROM_NAME ?? 'Yoga Fitness',
+    adminEmail: process.env.ADMIN_EMAIL,
+    frontendUrl: process.env.FRONTEND_URL,
+    adminUrl: process.env.ADMIN_URL,
+  },
 });
