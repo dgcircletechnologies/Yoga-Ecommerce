@@ -13,53 +13,11 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build and Deploy
+    name: Deploy to Hostinger
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Validate production files
-        run: |
-          set -e
-
-          echo "Checking production files..."
-
-          test -f docker-compose.prod.yml
-          test -f frontend/Dockerfile.prod
-          test -f backend/Dockerfile.prod
-
-          echo "Production files validated."
-
-      - name: Create deployment archive
-        run: |
-          set -e
-
-          echo "Creating deployment archive..."
-
-          tar \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='node_modules' \
-            --exclude='frontend/.next' \
-            --exclude='backend/dist' \
-            --exclude='.env' \
-            -czf yoga-fitness-deploy.tar.gz .
-
-          echo "Deployment archive created."
-
-      - name: Upload application to Hostinger
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOSTINGER_HOST }}
-          username: ${{ secrets.HOSTINGER_USERNAME }}
-          password: ${{ secrets.HOSTINGER_PASSWORD }}
-          port: 22
-          source: "yoga-fitness-deploy.tar.gz"
-          target: "/tmp"
-
-      - name: Deploy application on Hostinger
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.HOSTINGER_HOST }}
@@ -71,25 +29,42 @@ jobs:
             set -e
 
             APP_DIR="/root/yoga-fitness"
-            ARCHIVE="/tmp/yoga-fitness-deploy.tar.gz"
+            REPO="git@github.com:YOUR_USERNAME/YOUR_REPOSITORY.git"
 
             echo "======================================"
             echo "Yoga Fitness Production Deployment"
             echo "======================================"
 
-            echo "Creating application directory..."
+            echo "Checking Git..."
 
-            mkdir -p "$APP_DIR"
+            git --version
 
-            echo "Extracting deployment..."
+            if [ ! -d "$APP_DIR/.git" ]; then
 
-            tar -xzf "$ARCHIVE" -C "$APP_DIR"
+              echo "Repository does not exist."
+              echo "Cloning repository..."
 
-            rm -f "$ARCHIVE"
+              mkdir -p "$APP_DIR"
+
+              git clone "$REPO" "$APP_DIR"
+
+            else
+
+              echo "Repository already exists."
+              echo "Updating repository..."
+
+              cd "$APP_DIR"
+
+              git fetch origin
+              git reset --hard origin/main
+
+            fi
 
             cd "$APP_DIR"
 
-            echo "Creating production environment file..."
+            echo "Repository updated."
+
+            echo "Creating production environment..."
 
             cat > .env <<'EOF'
             FRONTEND_PORT=5002
@@ -99,7 +74,7 @@ jobs:
             BACKEND_HOST=localhost
             BACKEND_SERVICE_HOST=backend
 
-            POSTGRES_DB=${{ secrets.HOSTINGER_PASSWORD }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
             POSTGRES_USER=${{ secrets.POSTGRES_USER }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
 
@@ -133,9 +108,7 @@ jobs:
 
             chmod 600 .env
 
-            echo "Production environment created."
-
-            echo "Checking Docker..."
+            echo "Validating Docker..."
 
             docker --version
             docker compose version
@@ -146,9 +119,7 @@ jobs:
               -f docker-compose.prod.yml \
               config -q
 
-            echo "Docker Compose configuration is valid."
-
-            echo "Building and starting production containers..."
+            echo "Building and starting containers..."
 
             docker compose \
               -f docker-compose.prod.yml \
@@ -160,7 +131,7 @@ jobs:
 
             sleep 10
 
-            echo "Checking container status..."
+            echo "Checking containers..."
 
             docker compose \
               -f docker-compose.prod.yml \
