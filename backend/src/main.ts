@@ -10,9 +10,13 @@ async function bootstrap() {
   const port = config.getOrThrow<number>('port');
   const corsOrigin = config.getOrThrow<string>('corsOrigin');
 
-  app.setGlobalPrefix('api/v1', {
-    exclude: ['health'],
-  });
+  app.setGlobalPrefix('api/v1');
+  app
+    .getHttpAdapter()
+    .get('/health', (_req: unknown, res: { status: (code: number) => { send: (body: unknown) => void } }) => {
+      res.status(200).send({ status: 'ok' });
+    });
+
   app.enableCors({
     origin: corsOrigin.split(',').map((origin) => origin.trim()),
   });
