@@ -1,7 +1,28 @@
+function resolveDatabaseUrl(): string | undefined {
+  const {
+    POSTGRES_HOST,
+    POSTGRES_PORT,
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+    POSTGRES_DB,
+    DATABASE_URL,
+  } = process.env;
+
+  if (POSTGRES_HOST && POSTGRES_USER && POSTGRES_PASSWORD !== undefined && POSTGRES_DB) {
+    const user = encodeURIComponent(POSTGRES_USER);
+    const password = encodeURIComponent(POSTGRES_PASSWORD);
+    const port = POSTGRES_PORT?.trim() || '5432';
+    const db = encodeURIComponent(POSTGRES_DB);
+    return `postgresql://${user}:${password}@${POSTGRES_HOST}:${port}/${db}`;
+  }
+
+  return DATABASE_URL;
+}
+
 export default () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT),
-  databaseUrl: process.env.DATABASE_URL,
+  databaseUrl: resolveDatabaseUrl(),
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '15m',
   corsOrigin: process.env.FRONTEND_URL ?? process.env.CORS_ORIGIN,

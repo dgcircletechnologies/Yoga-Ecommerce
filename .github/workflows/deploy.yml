@@ -38,8 +38,8 @@ jobs:
           file: ./backend/Dockerfile.prod
           push: false
           build-args: |
-            DATABASE_URL=postgresql://ci_user:ci_password@localhost:5432/ci_database
-            BACKEND_INTERNAL_PORT=4000
+            DATABASE_URL=postgresql://ci_user:ci_password@localhost:${{ secrets.POSTGRES_PORT || vars.POSTGRES_PORT || '5434' }}/ci_database
+            BACKEND_INTERNAL_PORT=${{ secrets.BACKEND_INTERNAL_PORT || vars.BACKEND_INTERNAL_PORT || '4000' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -53,10 +53,10 @@ jobs:
           file: ./frontend/Dockerfile.prod
           push: false
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1' }}
-            INTERNAL_API_URL=${{ secrets.INTERNAL_API_URL || 'http://backend:4000/api/v1' }}
-            NEXT_PUBLIC_RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
-            FRONTEND_INTERNAL_PORT=${{ secrets.FRONTEND_INTERNAL_PORT || '3000' }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1' }}
+            INTERNAL_API_URL=${{ secrets.INTERNAL_API_URL || vars.INTERNAL_API_URL || 'http://backend:4000/api/v1' }}
+            NEXT_PUBLIC_RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID || vars.RAZORPAY_KEY_ID }}
+            FRONTEND_INTERNAL_PORT=${{ secrets.FRONTEND_INTERNAL_PORT || vars.FRONTEND_INTERNAL_PORT || '3000' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -98,47 +98,48 @@ jobs:
       # --------------------------------------------------------
       - name: Validate deployment secrets
         env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST || vars.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME || vars.HOSTINGER_USERNAME }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT || vars.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
-          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR || vars.HOSTINGER_APP_DIR }}
 
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          INTERNAL_API_URL: ${{ secrets.INTERNAL_API_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL }}
+          INTERNAL_API_URL: ${{ secrets.INTERNAL_API_URL || vars.INTERNAL_API_URL }}
 
-          FRONTEND_PORT: ${{ secrets.FRONTEND_PORT }}
-          FRONTEND_INTERNAL_PORT: ${{ secrets.FRONTEND_INTERNAL_PORT }}
+          FRONTEND_PORT: ${{ secrets.FRONTEND_PORT || vars.FRONTEND_PORT }}
+          FRONTEND_INTERNAL_PORT: ${{ secrets.FRONTEND_INTERNAL_PORT || vars.FRONTEND_INTERNAL_PORT }}
 
-          BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
-          BACKEND_INTERNAL_PORT: ${{ secrets.BACKEND_INTERNAL_PORT }}
-          BACKEND_HOST: ${{ secrets.BACKEND_HOST }}
+          BACKEND_PORT: ${{ secrets.BACKEND_PORT || vars.BACKEND_PORT }}
+          BACKEND_INTERNAL_PORT: ${{ secrets.BACKEND_INTERNAL_PORT || vars.BACKEND_INTERNAL_PORT }}
+          BACKEND_HOST: ${{ secrets.BACKEND_HOST || vars.BACKEND_HOST }}
 
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PORT: ${{ secrets.POSTGRES_PORT || vars.POSTGRES_PORT || '5434' }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB || vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER || vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN || vars.JWT_EXPIRES_IN }}
 
-          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
-          ADMIN_URL: ${{ secrets.ADMIN_URL }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL || vars.FRONTEND_URL }}
+          ADMIN_URL: ${{ secrets.ADMIN_URL || vars.ADMIN_URL }}
 
-          MAIL_HOST: ${{ secrets.MAIL_HOST }}
-          MAIL_PORT: ${{ secrets.MAIL_PORT }}
-          MAIL_SECURE: ${{ secrets.MAIL_SECURE }}
-          MAIL_USER: ${{ secrets.MAIL_USER }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST || vars.MAIL_HOST }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT || vars.MAIL_PORT }}
+          MAIL_SECURE: ${{ secrets.MAIL_SECURE || vars.MAIL_SECURE }}
+          MAIL_USER: ${{ secrets.MAIL_USER || vars.MAIL_USER }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-          MAIL_FROM_EMAIL: ${{ secrets.MAIL_FROM_EMAIL }}
-          MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME }}
-          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          MAIL_FROM_EMAIL: ${{ secrets.MAIL_FROM_EMAIL || vars.MAIL_FROM_EMAIL }}
+          MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME || vars.MAIL_FROM_NAME }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
 
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME || vars.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY || vars.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          CLOUDINARY_PRODUCT_FOLDER: ${{ secrets.CLOUDINARY_PRODUCT_FOLDER }}
+          CLOUDINARY_PRODUCT_FOLDER: ${{ secrets.CLOUDINARY_PRODUCT_FOLDER || vars.CLOUDINARY_PRODUCT_FOLDER }}
 
-          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID || vars.RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
 
@@ -162,6 +163,7 @@ jobs:
             BACKEND_INTERNAL_PORT
             BACKEND_HOST
 
+            POSTGRES_PORT
             POSTGRES_DB
             POSTGRES_USER
             POSTGRES_PASSWORD
@@ -187,12 +189,12 @@ jobs:
 
           for var in "${required_vars[@]}"; do
             if [ -z "${!var}" ]; then
-              echo "ERROR: Required secret '$var' is missing."
+              echo "ERROR: Required secret/variable '$var' is missing."
               exit 1
             fi
           done
 
-          echo "All required deployment secrets are present."
+          echo "All required deployment secrets and variables are present (POSTGRES_PORT=${POSTGRES_PORT})."
 
 
       # --------------------------------------------------------
@@ -200,8 +202,8 @@ jobs:
       # --------------------------------------------------------
       - name: Configure SSH
         env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST || vars.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT || vars.HOSTINGER_PORT }}
         run: |
           set -e
 
@@ -223,7 +225,7 @@ jobs:
       - name: Set application directory
         id: app_dir
         env:
-          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR || vars.HOSTINGER_APP_DIR }}
         run: |
           set -e
 
@@ -258,41 +260,42 @@ jobs:
       # --------------------------------------------------------
       - name: Generate production environment file
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          INTERNAL_API_URL: ${{ secrets.INTERNAL_API_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL }}
+          INTERNAL_API_URL: ${{ secrets.INTERNAL_API_URL || vars.INTERNAL_API_URL }}
 
-          FRONTEND_PORT: ${{ secrets.FRONTEND_PORT }}
-          FRONTEND_INTERNAL_PORT: ${{ secrets.FRONTEND_INTERNAL_PORT }}
+          FRONTEND_PORT: ${{ secrets.FRONTEND_PORT || vars.FRONTEND_PORT }}
+          FRONTEND_INTERNAL_PORT: ${{ secrets.FRONTEND_INTERNAL_PORT || vars.FRONTEND_INTERNAL_PORT }}
 
-          BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
-          BACKEND_INTERNAL_PORT: ${{ secrets.BACKEND_INTERNAL_PORT }}
-          BACKEND_HOST: ${{ secrets.BACKEND_HOST }}
+          BACKEND_PORT: ${{ secrets.BACKEND_PORT || vars.BACKEND_PORT }}
+          BACKEND_INTERNAL_PORT: ${{ secrets.BACKEND_INTERNAL_PORT || vars.BACKEND_INTERNAL_PORT }}
+          BACKEND_HOST: ${{ secrets.BACKEND_HOST || vars.BACKEND_HOST }}
 
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PORT: ${{ secrets.POSTGRES_PORT || vars.POSTGRES_PORT || '5434' }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB || vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER || vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN || vars.JWT_EXPIRES_IN }}
 
-          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
-          ADMIN_URL: ${{ secrets.ADMIN_URL }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL || vars.FRONTEND_URL }}
+          ADMIN_URL: ${{ secrets.ADMIN_URL || vars.ADMIN_URL }}
 
-          MAIL_HOST: ${{ secrets.MAIL_HOST }}
-          MAIL_PORT: ${{ secrets.MAIL_PORT }}
-          MAIL_SECURE: ${{ secrets.MAIL_SECURE }}
-          MAIL_USER: ${{ secrets.MAIL_USER }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST || vars.MAIL_HOST }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT || vars.MAIL_PORT }}
+          MAIL_SECURE: ${{ secrets.MAIL_SECURE || vars.MAIL_SECURE }}
+          MAIL_USER: ${{ secrets.MAIL_USER || vars.MAIL_USER }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-          MAIL_FROM_EMAIL: ${{ secrets.MAIL_FROM_EMAIL }}
-          MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME }}
-          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          MAIL_FROM_EMAIL: ${{ secrets.MAIL_FROM_EMAIL || vars.MAIL_FROM_EMAIL }}
+          MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME || vars.MAIL_FROM_NAME }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
 
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME || vars.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY || vars.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          CLOUDINARY_PRODUCT_FOLDER: ${{ secrets.CLOUDINARY_PRODUCT_FOLDER }}
+          CLOUDINARY_PRODUCT_FOLDER: ${{ secrets.CLOUDINARY_PRODUCT_FOLDER || vars.CLOUDINARY_PRODUCT_FOLDER }}
 
-          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID || vars.RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
 
@@ -310,6 +313,7 @@ jobs:
           BACKEND_INTERNAL_PORT=${BACKEND_INTERNAL_PORT}
           BACKEND_HOST=${BACKEND_HOST}
 
+          POSTGRES_PORT=${POSTGRES_PORT:-5434}
           POSTGRES_DB=${POSTGRES_DB}
           POSTGRES_USER=${POSTGRES_USER}
           POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -349,9 +353,9 @@ jobs:
       # --------------------------------------------------------
       - name: Prepare application directory
         env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST || vars.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME || vars.HOSTINGER_USERNAME }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT || vars.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
         run: |
@@ -371,9 +375,9 @@ jobs:
       # --------------------------------------------------------
       - name: Upload source archive
         env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST || vars.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME || vars.HOSTINGER_USERNAME }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT || vars.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
         run: |
@@ -393,9 +397,9 @@ jobs:
       # --------------------------------------------------------
       - name: Upload production environment
         env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST || vars.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME || vars.HOSTINGER_USERNAME }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT || vars.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
         run: |
@@ -415,9 +419,9 @@ jobs:
       # --------------------------------------------------------
       - name: Deploy application
         env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST || vars.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME || vars.HOSTINGER_USERNAME }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT || vars.HOSTINGER_PORT }}
           HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
           APP_DIR: ${{ steps.app_dir.outputs.APP_DIR }}
         run: |
@@ -489,7 +493,8 @@ jobs:
           echo "Starting production containers..."
 
           if ! docker compose -f docker-compose.prod.yml up -d --remove-orphans; then
-            echo "ERROR: Containers failed to become healthy. Dumping backend logs:"
+            echo "ERROR: Containers failed to become healthy. Dumping postgres & backend logs:"
+            docker compose -f docker-compose.prod.yml logs --tail=50 postgres || true
             docker compose -f docker-compose.prod.yml logs --tail=100 backend || true
             exit 1
           fi
