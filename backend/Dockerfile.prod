@@ -19,6 +19,7 @@ FROM node:24-alpine AS runner
 WORKDIR /app
 
 ARG BACKEND_INTERNAL_PORT=4000
+ARG DATABASE_URL="postgresql://postgres:postgres@localhost:5432/yoga_ecommerce"
 
 ENV NODE_ENV=production
 
@@ -29,7 +30,10 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+
+RUN DATABASE_URL="${DATABASE_URL}" npx prisma generate
 
 EXPOSE ${BACKEND_INTERNAL_PORT}
 

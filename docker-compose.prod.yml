@@ -36,7 +36,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
       args:
-        DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB}
+        DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB}}
         BACKEND_INTERNAL_PORT: ${BACKEND_INTERNAL_PORT:?BACKEND_INTERNAL_PORT must be set}
 
     container_name: yoga-fitness-backend-prod
@@ -52,7 +52,7 @@ services:
       BACKEND_HOST: ${BACKEND_HOST:?BACKEND_HOST must be set}
       BACKEND_INTERNAL_PORT: ${BACKEND_INTERNAL_PORT:?BACKEND_INTERNAL_PORT must be set}
 
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB}}
 
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}

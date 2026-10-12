@@ -302,46 +302,45 @@ jobs:
         run: |
           set -e
 
-          cat <<EOF | sed 's/^[[:space:]]*//' > /tmp/yoga-fitness.production.env
-          NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-          INTERNAL_API_URL=${INTERNAL_API_URL}
+          POSTGRES_PORT_VALUE="${POSTGRES_PORT:-5434}"
+          POSTGRES_USER_ENCODED="$(node -e 'console.log(encodeURIComponent(process.env.POSTGRES_USER || ""))')"
+          POSTGRES_PASSWORD_ENCODED="$(node -e 'console.log(encodeURIComponent(process.env.POSTGRES_PASSWORD || ""))')"
+          POSTGRES_DB_ENCODED="$(node -e 'console.log(encodeURIComponent(process.env.POSTGRES_DB || ""))')"
+          DATABASE_URL_VALUE="postgresql://${POSTGRES_USER_ENCODED}:${POSTGRES_PASSWORD_ENCODED}@postgres:${POSTGRES_PORT_VALUE}/${POSTGRES_DB_ENCODED}"
 
-          FRONTEND_PORT=${FRONTEND_PORT}
-          FRONTEND_INTERNAL_PORT=${FRONTEND_INTERNAL_PORT}
-
-          BACKEND_PORT=${BACKEND_PORT}
-          BACKEND_INTERNAL_PORT=${BACKEND_INTERNAL_PORT}
-          BACKEND_HOST=${BACKEND_HOST}
-
-          POSTGRES_PORT=${POSTGRES_PORT:-5434}
-          POSTGRES_DB=${POSTGRES_DB}
-          POSTGRES_USER=${POSTGRES_USER}
-          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-
-          JWT_SECRET=${JWT_SECRET}
-          JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
-
-          FRONTEND_URL=${FRONTEND_URL}
-          ADMIN_URL=${ADMIN_URL}
-
-          MAIL_HOST=${MAIL_HOST}
-          MAIL_PORT=${MAIL_PORT:-587}
-          MAIL_SECURE=${MAIL_SECURE:-false}
-          MAIL_USER=${MAIL_USER}
-          MAIL_PASSWORD=${MAIL_PASSWORD}
-          MAIL_FROM_EMAIL=${MAIL_FROM_EMAIL}
-          MAIL_FROM_NAME=${MAIL_FROM_NAME:-Yoga Fitness}
-          ADMIN_EMAIL=${ADMIN_EMAIL}
-
-          CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
-          CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
-          CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
-          CLOUDINARY_PRODUCT_FOLDER=${CLOUDINARY_PRODUCT_FOLDER:-yoga_ecommerce}
-
-          RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
-          RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
-          RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}
-          EOF
+          {
+            printf '%s\n' "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}"
+            printf '%s\n' "INTERNAL_API_URL=${INTERNAL_API_URL}"
+            printf '%s\n' "FRONTEND_PORT=${FRONTEND_PORT}"
+            printf '%s\n' "FRONTEND_INTERNAL_PORT=${FRONTEND_INTERNAL_PORT}"
+            printf '%s\n' "BACKEND_PORT=${BACKEND_PORT}"
+            printf '%s\n' "BACKEND_INTERNAL_PORT=${BACKEND_INTERNAL_PORT}"
+            printf '%s\n' "BACKEND_HOST=${BACKEND_HOST}"
+            printf '%s\n' "POSTGRES_PORT=${POSTGRES_PORT_VALUE}"
+            printf '%s\n' "POSTGRES_DB=${POSTGRES_DB}"
+            printf '%s\n' "POSTGRES_USER=${POSTGRES_USER}"
+            printf '%s\n' "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+            printf '%s\n' "DATABASE_URL=${DATABASE_URL_VALUE}"
+            printf '%s\n' "JWT_SECRET=${JWT_SECRET}"
+            printf '%s\n' "JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}"
+            printf '%s\n' "FRONTEND_URL=${FRONTEND_URL}"
+            printf '%s\n' "ADMIN_URL=${ADMIN_URL}"
+            printf '%s\n' "MAIL_HOST=${MAIL_HOST}"
+            printf '%s\n' "MAIL_PORT=${MAIL_PORT:-587}"
+            printf '%s\n' "MAIL_SECURE=${MAIL_SECURE:-false}"
+            printf '%s\n' "MAIL_USER=${MAIL_USER}"
+            printf '%s\n' "MAIL_PASSWORD=${MAIL_PASSWORD}"
+            printf '%s\n' "MAIL_FROM_EMAIL=${MAIL_FROM_EMAIL}"
+            printf '%s\n' "MAIL_FROM_NAME=${MAIL_FROM_NAME:-Yoga Fitness}"
+            printf '%s\n' "ADMIN_EMAIL=${ADMIN_EMAIL}"
+            printf '%s\n' "CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}"
+            printf '%s\n' "CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}"
+            printf '%s\n' "CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}"
+            printf '%s\n' "CLOUDINARY_PRODUCT_FOLDER=${CLOUDINARY_PRODUCT_FOLDER:-yoga_ecommerce}"
+            printf '%s\n' "RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}"
+            printf '%s\n' "RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}"
+            printf '%s\n' "RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}"
+          } > /tmp/yoga-fitness.production.env
 
           chmod 600 /tmp/yoga-fitness.production.env
 
