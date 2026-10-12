@@ -3,21 +3,45 @@ import * as argon2 from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error('DATABASE_URL is required to seed the database');
+function resolveDatabaseUrl(): string {
+  const {
+    POSTGRES_HOST,
+    POSTGRES_PORT,
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+    POSTGRES_DB,
+    DATABASE_URL,
+  } = process.env;
+
+  if (POSTGRES_HOST && POSTGRES_USER && POSTGRES_PASSWORD !== undefined && POSTGRES_DB) {
+    const user = encodeURIComponent(POSTGRES_USER);
+    const password = encodeURIComponent(POSTGRES_PASSWORD);
+    const port = POSTGRES_PORT?.trim() || '5432';
+    const db = encodeURIComponent(POSTGRES_DB);
+    return `postgresql://${user}:${password}@${POSTGRES_HOST}:${port}/${db}`;
+  }
+
+  if (!DATABASE_URL) {
+    throw new Error('DATABASE_URL is required to seed the database');
+  }
+
+  return DATABASE_URL;
+}
+
+const databaseUrl = resolveDatabaseUrl();
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: databaseUrl }),
 });
 
 async function main() {
-  const name = process.env.SEED_ADMIN_NAME?.trim();
-  const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+  const name = process.env.SEED_ADMIN_NAME?.trim() || 'Yoga Administrator';
+  const email = (process.env.SEED_ADMIN_EMAIL || process.env.ADMIN_EMAIL)?.trim().toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD;
 
-  if (!name || !email || !password) {
+  if (!email || !password) {
     throw new Error(
-      'SEED_ADMIN_NAME, SEED_ADMIN_EMAIL, and SEED_ADMIN_PASSWORD are required to seed the admin user',
+      'SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are required to seed the admin user',
     );
   }
 
@@ -66,11 +90,7 @@ async function main() {
   for (const category of categories) {
     const saved = await prisma.category.upsert({
       where: { slug: category.slug },
-      update: {
-        name: category.name,
-        description: category.description,
-        imageUrl: category.imageUrl,
-      },
+      update: {},
       create: {
         ...category,
       },
@@ -178,16 +198,7 @@ async function main() {
 
     await prisma.product.upsert({
       where: { slug: product.slug },
-      update: {
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        stock: product.stock,
-        categoryId: category.id,
-        tags: product.tags,
-        imageUrl: product.imageUrl,
-        isActive: true,
-      },
+      update: {},
       create: {
         name: product.name,
         slug: product.slug,
@@ -243,7 +254,7 @@ async function main() {
     const password = await argon2.hash(trainerPassword);
     const saved = await prisma.user.upsert({
       where: { email: trainer.email },
-      update: { ...trainer, password, role: 'TRAINER' },
+      update: {},
       create: { ...trainer, password, role: 'TRAINER' },
       select: { id: true },
     });
@@ -292,15 +303,7 @@ async function main() {
   for (const service of services) {
     await prisma.service.upsert({
       where: { slug: service.slug },
-      update: {
-        name: service.name,
-        description: service.description,
-        price: service.price,
-        sessions: service.sessions,
-        trainerId: trainerByEmail.get(service.trainerEmail)?.id,
-        status: 'ACTIVE',
-        imageUrl: service.imageUrl,
-      },
+      update: {},
       create: {
         name: service.name,
         slug: service.slug,

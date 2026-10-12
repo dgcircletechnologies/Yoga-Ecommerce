@@ -143,6 +143,10 @@ jobs:
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
 
+          SEED_ADMIN_NAME: ${{ secrets.SEED_ADMIN_NAME || vars.SEED_ADMIN_NAME || 'Yoga Administrator' }}
+          SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL || vars.SEED_ADMIN_EMAIL || secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD || vars.SEED_ADMIN_PASSWORD || secrets.ADMIN_PASSWORD || vars.ADMIN_PASSWORD }}
+
         run: |
           set -e
 
@@ -185,6 +189,9 @@ jobs:
 
             RAZORPAY_KEY_ID
             RAZORPAY_KEY_SECRET
+
+            SEED_ADMIN_EMAIL
+            SEED_ADMIN_PASSWORD
           )
 
           for var in "${required_vars[@]}"; do
@@ -299,6 +306,10 @@ jobs:
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
 
+          SEED_ADMIN_NAME: ${{ secrets.SEED_ADMIN_NAME || vars.SEED_ADMIN_NAME || 'Yoga Administrator' }}
+          SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL || vars.SEED_ADMIN_EMAIL || secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD || vars.SEED_ADMIN_PASSWORD || secrets.ADMIN_PASSWORD || vars.ADMIN_PASSWORD }}
+
         run: |
           set -e
 
@@ -340,6 +351,9 @@ jobs:
             printf '%s\n' "RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}"
             printf '%s\n' "RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}"
             printf '%s\n' "RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}"
+            printf '%s\n' "SEED_ADMIN_NAME=${SEED_ADMIN_NAME:-Yoga Administrator}"
+            printf '%s\n' "SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL}"
+            printf '%s\n' "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD}"
           } > /tmp/yoga-fitness.production.env
 
           chmod 600 /tmp/yoga-fitness.production.env

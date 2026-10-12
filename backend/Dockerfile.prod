@@ -37,4 +37,4 @@ RUN DATABASE_URL="${DATABASE_URL}" npx prisma generate
 
 EXPOSE ${BACKEND_INTERNAL_PORT}
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:prod"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && npm run start:prod"]
