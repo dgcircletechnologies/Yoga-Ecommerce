@@ -3,7 +3,28 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import type { CreateCouponDto, UpdateCouponDto } from './dto/manage-coupon.dto.js';
 
-type Item = { productId?: string; serviceId?: string; type: 'PRODUCT' | 'SERVICE'; name: string; price: number; quantity: number; discount: number; total: number };
+type Item = {
+  productId?: string;
+  serviceId?: string;
+  type: 'PRODUCT' | 'SERVICE';
+  name: string;
+  price: number;
+  quantity: number;
+  discount: number;
+  total: number;
+  weight?: number | null;
+  weightUnit?: string | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  dimensionUnit?: string | null;
+  material?: string | null;
+  color?: string | null;
+  manufacturer?: string | null;
+  modelNumber?: string | null;
+  countryOfOrigin?: string | null;
+  careInstructions?: string | null;
+};
 type Client = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
@@ -72,8 +93,40 @@ export class CouponsService {
 
   normalizeCode(code: string) { return code.trim().toUpperCase(); }
   private async priceItem(item: { type: string; productId?: string; serviceId?: string; quantity: number }, client: Client): Promise<Item> {
-    if (item.type === 'PRODUCT') { if (!item.productId || item.serviceId) throw new ConflictException('A product item must reference one product'); const row = await client.product.findUnique({ where: { id: item.productId } }); if (!row) throw new NotFoundException('Product not found'); if (!row.isActive) throw new ConflictException(`${row.name} is unavailable`); const price = Number(row.price); return { productId: row.id, type: 'PRODUCT', name: row.name, price, quantity: item.quantity, discount: 0, total: this.round(price * item.quantity) }; }
-    if (!item.serviceId || item.productId) throw new ConflictException('A service item must reference one service'); const row = await client.service.findUnique({ where: { id: item.serviceId } }); if (!row) throw new NotFoundException('Service not found'); if (row.status !== 'ACTIVE') throw new ConflictException(`${row.name} is unavailable`); const price = Number(row.price); return { serviceId: row.id, type: 'SERVICE', name: row.name, price, quantity: item.quantity, discount: 0, total: this.round(price * item.quantity) };
+    if (item.type === 'PRODUCT') {
+      if (!item.productId || item.serviceId) throw new ConflictException('A product item must reference one product');
+      const row = await client.product.findUnique({ where: { id: item.productId } });
+      if (!row) throw new NotFoundException('Product not found');
+      if (!row.isActive) throw new ConflictException(`${row.name} is unavailable`);
+      const price = Number(row.price);
+      return {
+        productId: row.id,
+        type: 'PRODUCT',
+        name: row.name,
+        price,
+        quantity: item.quantity,
+        discount: 0,
+        total: this.round(price * item.quantity),
+        weight: row.weight === null || row.weight === undefined ? null : Number(row.weight),
+        weightUnit: row.weightUnit ?? null,
+        length: row.length === null || row.length === undefined ? null : Number(row.length),
+        width: row.width === null || row.width === undefined ? null : Number(row.width),
+        height: row.height === null || row.height === undefined ? null : Number(row.height),
+        dimensionUnit: row.dimensionUnit ?? null,
+        material: row.material ?? null,
+        color: row.color ?? null,
+        manufacturer: row.manufacturer ?? null,
+        modelNumber: row.modelNumber ?? null,
+        countryOfOrigin: row.countryOfOrigin ?? null,
+        careInstructions: row.careInstructions ?? null,
+      };
+    }
+    if (!item.serviceId || item.productId) throw new ConflictException('A service item must reference one service');
+    const row = await client.service.findUnique({ where: { id: item.serviceId } });
+    if (!row) throw new NotFoundException('Service not found');
+    if (row.status !== 'ACTIVE') throw new ConflictException(`${row.name} is unavailable`);
+    const price = Number(row.price);
+    return { serviceId: row.id, type: 'SERVICE', name: row.name, price, quantity: item.quantity, discount: 0, total: this.round(price * item.quantity) };
   }
   private validateDates(value: any) { const start = new Date(value.startDate); const expiry = new Date(value.expiryDate); if (Number.isNaN(start.getTime()) || Number.isNaN(expiry.getTime())) throw new ConflictException('Start and expiry dates are required'); if (expiry < start) throw new ConflictException('Expiry date cannot be before start date'); return { code: value.code, discountType: value.discountType ?? 'PERCENTAGE', discountValue: value.discountValue, minimumAmount: value.minimumAmount ?? null, applicableTo: value.applicableTo, startDate: start, expiryDate: expiry, usageLimit: value.usageLimit ?? null, ...(value.status !== undefined ? { status: value.status } : {}) }; }
   private presentCoupon(coupon: any) { const remaining = coupon.usageLimit === null ? null : Math.max(0, coupon.usageLimit - coupon.usageCount); return { ...coupon, discountValue: Number(coupon.discountValue), minimumAmount: coupon.minimumAmount === null ? null : Number(coupon.minimumAmount), remainingUsage: remaining, usageTotal: coupon._count?.usages ?? coupon.usageCount, _count: undefined }; }

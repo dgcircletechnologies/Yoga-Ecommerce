@@ -18,10 +18,30 @@ export function ServiceBookingsPage() {
 
   return <><PageHero title="My Services" /><main><Container className="py-16 sm:py-20 lg:py-24">
     <div className="border-b border-black/10 pb-8"><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-purple">Your Sattva history</p><h1 className="mt-3 text-4xl sm:text-5xl">Service bookings</h1><p className="mt-3 text-sm text-brand-gray">Your offline home sessions, trainers, schedules, and booking status.</p></div>
-    {loading ? <div className="py-20 text-center text-sm text-brand-gray">Loading service bookings…</div> : error ? <p className="py-20 text-center text-sm text-red-700">{error}</p> : !bookings.length ? <div className="py-20 text-center"><h2 className="text-3xl">No service bookings yet.</h2><Link className="mt-7 inline-flex min-h-12 items-center bg-brand-purple px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-white" href="/services">Explore services</Link></div> : <div className="mt-8 space-y-6">{bookings.map((booking) => <article className="border border-black/10 bg-white p-6 shadow-sm sm:p-8" key={booking.id}>
+    {loading ? <div className="py-20 text-center text-sm text-brand-gray">Loading service bookings…</div> : error ? <p className="py-20 text-center text-sm text-red-700">{error}</p> : !bookings.length ? <div className="py-20 text-center"><h2 className="text-3xl">No service bookings yet.</h2><Link className="mt-7 inline-flex min-h-12 items-center bg-brand-purple px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-white" href="/services">Explore services</Link></div> : <div className="mt-8 space-y-6">{bookings.map((booking) => {
+      const isServiceConfirmed = Boolean(booking.otpVerified) || ["CONFIRMED", "COMPLETED"].includes(booking.status.toUpperCase());
+      return <article className="border border-black/10 bg-white p-6 shadow-sm sm:p-8" key={booking.id}>
       <div className="flex flex-col justify-between gap-5 border-b border-black/10 pb-5 sm:flex-row"><div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-purple">Offline home session</p><h2 className="mt-2 text-2xl">{booking.service.name}</h2><p className="mt-2 text-sm text-brand-gray">Trainer: {booking.trainer.name} · {booking.quantity} {booking.quantity === 1 ? "session" : "sessions"}</p></div><div className="text-left sm:text-right"><p className="text-lg font-semibold">USD {booking.totalAmount.toFixed(2)}</p><p className="mt-1 flex items-center gap-2 text-xs text-brand-gray sm:justify-end"><StatusIcon service status={booking.status} size={18} /><span>{booking.paymentStatus ?? "Payment pending"} · {booking.status}</span></p></div></div>
-      {booking.otp && <div className="mt-6 border border-brand-purple/20 bg-brand-purple/5 p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-purple">Your service OTP</p><p className="mt-2 text-3xl font-bold tracking-[0.3em]">{booking.otp}</p><p className="mt-2 text-xs leading-5 text-brand-gray">Keep this code safe and provide it to your trainer when requested.</p></div>}
+      {isServiceConfirmed ? (
+        <div className="mt-6 flex items-start gap-3.5 border border-emerald-600/25 bg-emerald-50/70 p-5">
+          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+              <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-800">Service Verified &amp; Delivered</p>
+            <p className="mt-1 text-base font-semibold text-emerald-950">Your wellness session has been verified and successfully delivered.</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-800/90">
+              Trainer verification is complete{booking.verifiedAt ? ` on ${date(booking.verifiedAt)}` : ""}. Thank you for practicing with Sattva Wellness.
+            </p>
+          </div>
+        </div>
+      ) : booking.otp && booking.status.toUpperCase() !== "CANCELLED" ? (
+        <div className="mt-6 border border-brand-purple/20 bg-brand-purple/5 p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-purple">Your service OTP</p><p className="mt-2 text-3xl font-bold tracking-[0.3em]">{booking.otp}</p><p className="mt-2 text-xs leading-5 text-brand-gray">Keep this code safe and provide it to your trainer when requested.</p></div>
+      ) : null}
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_280px]"><div><h3 className="text-sm font-semibold">Scheduled sessions</h3><div className="mt-3 space-y-2">{booking.sessions.map((session, index) => <p className="flex justify-between gap-4 border-b border-black/5 py-2 text-sm" key={session.id}><span>Session {index + 1}</span><span className="flex items-center gap-2 text-brand-gray"><StatusIcon service status={session.status} size={17} />{date(session.scheduledAt)} · {session.status}</span></p>)}</div></div><div className="text-sm leading-6 text-brand-gray"><h3 className="font-semibold text-brand-dark">Service address</h3><p className="mt-2">{booking.address.address}<br />{booking.address.city}, {booking.address.state}<br />{booking.address.country} {booking.address.postalCode}</p></div></div>
-    </article>)}</div>}
+    </article>;
+    })}</div>}
   </Container></main></>;
 }

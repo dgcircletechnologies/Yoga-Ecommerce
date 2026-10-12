@@ -80,18 +80,28 @@ describe('AuthService', () => {
       phone: '+14155552671',
     });
 
-    expect(create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        name: 'New User',
-        email: 'new@example.com',
-        phone: '+14155552671',
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'New User',
+          email: 'new@example.com',
+          phone: '+14155552671',
+        }),
       }),
-    });
+    );
     expect(result.data.user).toEqual({
       id: 'user-2',
       name: 'New User',
       email: 'new@example.com',
       role: 'USER',
+      phone: '+14155552671',
+      countryCode: undefined,
+      address1: undefined,
+      address2: undefined,
+      city: undefined,
+      state: undefined,
+      country: undefined,
+      postalCode: undefined,
     });
     expect(JSON.stringify(result)).not.toContain('password');
   });

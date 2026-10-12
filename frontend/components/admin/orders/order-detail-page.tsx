@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getAdminOrderHistory, getOrder, updateOrderStatus } from "@/api/orders.api";
 import { Container } from "@/components/ui/container";
 import { PrintIcon } from "@/components/ui/icons";
+import { AdminShipmentSection } from "@/components/admin/orders/admin-shipment-section";
 import { OrderPrintDocument } from "@/components/admin/orders/order-print-document";
 import { statusLabel, type Order, type OrderStatus, type OrderStatusHistory } from "@/types/order";
 
@@ -53,21 +54,89 @@ export function OrderDetailPage({ id }: { id: string }) {
   if (loading) return <Container className="py-20 text-center text-sm text-brand-gray">Loading order…</Container>;
   if (!order) return <Container className="py-20"><p className="text-sm text-red-700">{error || "Order not found."}</p></Container>;
 
-  return <Container className="py-10 sm:py-12 lg:py-16">
-    <Link className="no-print text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-purple" href="/admin/orders">← Orders overview</Link>
-    <header className="no-print mt-5 flex flex-col justify-between gap-5 border-b border-black/10 pb-8 sm:flex-row sm:items-end">
-      <div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-purple">Product order</p><h1 className="mt-3 text-4xl sm:text-5xl">Order #{order.id.slice(0, 8)}</h1><p className="mt-3 text-sm text-brand-gray">Placed {date(order.createdAt)} · Last updated {order.updatedAt ? date(order.updatedAt) : "—"}</p></div>
-      <div className="flex flex-wrap items-center gap-3"><span className="rounded-full bg-brand-purple/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-purple">Current status: {statusLabel(order.status)}</span><select aria-label="Choose existing order status" className="h-11 border border-black/10 bg-white px-3 text-sm" disabled={saving} onChange={(event) => { if (event.target.value) void changeStatus(event.target.value); }} value=""><option value="">Select existing status…</option>{Array.from(new Set([order.status, ...history.map((event) => event.toStatus), "new", "delivered", "cancelled"])).map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select><input aria-label="Enter custom order status" className="h-11 w-40 border border-black/10 px-3 text-sm" disabled={saving} onChange={(event) => setCustomStatus(event.target.value)} placeholder="Custom status" value={customStatus} /><button className="h-11 bg-brand-purple px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-50" disabled={saving || !customStatus.trim() || customStatus.trim() === order.status} onClick={() => void changeStatus(customStatus)} type="button">{saving ? "Updating…" : "Update"}</button></div>
-    </header>
-    {error && <p className="no-print mt-6 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-    <div className="no-print mt-8 grid gap-6 lg:grid-cols-3"><Card title="Customer" printDocument={<OrderPrintDocument className="print-only" order={order} history={history} />}><Info label="Name" value={order.customer.name} /><Info label="Email" value={order.customer.email} /><Info label="Phone" value={order.customer.phone || "Not provided"} /></Card><Card title="Shipping address"><p className="text-sm leading-7 text-brand-gray">{order.customer.address || "Not provided"}</p></Card><Card title="Payment"><Info label="Status" value={order.paymentStatus} /><Info label="Currency" value={order.currency || "USD"} /></Card></div>
-    <section className="no-print mt-6 bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl">Order items</h2><div className="mt-5 divide-y divide-black/10">{order.items.map((item, index) => <div className="flex justify-between gap-4 py-4" key={`${item.name}-${index}`}><div><p className="font-semibold">{item.name}</p><p className="mt-1 text-sm text-brand-gray">Qty {item.quantity} · Unit price {money(item.price)}</p></div><p className="font-semibold">{money(item.total ?? 0)}</p></div>)}</div><div className="mt-5 ml-auto max-w-sm space-y-3 border-t border-black/10 pt-5 text-sm"><Info label="Subtotal" value={money(order.subtotal ?? order.totalAmount)} />{order.couponCode && order.couponDiscountAmount !== undefined ? <Info label={`Coupon (${order.couponCode})`} value={`-${money(order.couponDiscountAmount)}`} /> : <Info label="Shipping" value={money(order.shippingCharge ?? 0)} />}<Info label="Grand total" value={money(order.totalAmount)} /></div></section>
-    <section className="no-print mt-6 bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl">Status history</h2><div className="mt-5 divide-y divide-black/10">{history.length ? history.map((event) => <div className="py-4" key={event.id}><div className="flex justify-between gap-4"><p className="font-semibold">{event.fromStatus ? `${statusLabel(event.fromStatus)} → ` : "Order Created → "}{statusLabel(event.toStatus)}</p><time className="text-xs text-brand-gray">{date(event.createdAt)}</time></div></div>) : <p className="py-6 text-sm text-brand-gray">No status history available.</p>}</div></section>
-  </Container>;
+  const handlePrint = () => {
+    const prev = document.title;
+    document.title = " ";
+    window.print();
+    setTimeout(() => {
+      document.title = prev;
+    }, 1000);
+  };
+
+  return (
+    <>
+      <Container className="no-print py-10 sm:py-12 lg:py-16">
+        <Link className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-purple" href="/admin/orders">← Orders overview</Link>
+        <header className="mt-5 flex flex-col justify-between gap-5 border-b border-black/10 pb-8 sm:flex-row sm:items-end">
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-purple">Product order</p><h1 className="mt-3 text-4xl sm:text-5xl">Order #{order.id.slice(0, 8)}</h1><p className="mt-3 text-sm text-brand-gray">Placed {date(order.createdAt)} · Last updated {order.updatedAt ? date(order.updatedAt) : "—"}</p></div>
+          <div className="flex flex-wrap items-center gap-3"><span className="rounded-full bg-brand-purple/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-purple">Current status: {statusLabel(order.status)}</span><select aria-label="Choose existing order status" className="h-11 border border-black/10 bg-white px-3 text-sm" disabled={saving} onChange={(event) => { if (event.target.value) void changeStatus(event.target.value); }} value=""><option value="">Select existing status…</option>{Array.from(new Set([order.status, ...history.map((event) => event.toStatus), "new", "delivered", "cancelled"])).map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select><input aria-label="Enter custom order status" className="h-11 w-40 border border-black/10 px-3 text-sm" disabled={saving} onChange={(event) => setCustomStatus(event.target.value)} placeholder="Custom status" value={customStatus} /><button className="h-11 bg-brand-purple px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-50" disabled={saving || !customStatus.trim() || customStatus.trim() === order.status} onClick={() => void changeStatus(customStatus)} type="button">{saving ? "Updating…" : "Update"}</button></div>
+        </header>
+        {error && <p className="mt-6 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          <Card onPrint={handlePrint} title="Customer">
+            <Info label="Name" value={order.customer.name} />
+            <Info label="Email" value={order.customer.email} />
+            <Info label="Phone" value={order.customer.phone || "Not provided"} />
+          </Card>
+          <Card title="Shipping address">
+            <p className="text-sm leading-7 text-brand-gray">{order.customer.address || "Not provided"}</p>
+          </Card>
+          <Card title="Payment">
+            <Info label="Status" value={order.paymentStatus} />
+            <Info label="Currency" value={order.currency || "USD"} />
+          </Card>
+        </div>
+        <AdminShipmentSection onRefresh={load} order={order} />
+        <section className="mt-6 bg-white p-6 shadow-sm sm:p-7">
+          <h2 className="text-2xl">Order items</h2>
+          <div className="mt-5 divide-y divide-black/10">
+            {order.items.map((item, index) => {
+              const parts: string[] = [];
+              if (item.weight !== null && item.weight !== undefined && Number(item.weight) > 0) parts.push(`Weight: ${item.weight} ${item.weightUnit || "g"}`);
+              if (item.length || item.width || item.height) parts.push(`Dimensions: ${[item.length, item.width, item.height].filter(Boolean).join(" × ")} ${item.dimensionUnit || "cm"}`);
+              if (item.material) parts.push(`Material: ${item.material}`);
+              if (item.color) parts.push(`Color: ${item.color}`);
+              return <div className="flex justify-between gap-4 py-4" key={`${item.name}-${index}`}><div><p className="font-semibold">{item.name}</p>{parts.length > 0 && <p className="mt-1 text-xs text-brand-purple">{parts.join(" · ")}</p>}<p className="mt-1 text-sm text-brand-gray">Qty {item.quantity} · Unit price {money(item.price)}</p></div><p className="font-semibold">{money(item.total ?? 0)}</p></div>;
+            })}
+          </div>
+          <div className="mt-5 ml-auto max-w-sm space-y-3 border-t border-black/10 pt-5 text-sm">
+            <Info label="Subtotal" value={money(order.subtotal ?? order.totalAmount)} />
+            {order.couponCode && order.couponDiscountAmount !== undefined ? <Info label={`Coupon (${order.couponCode})`} value={`-${money(order.couponDiscountAmount)}`} /> : <Info label="Shipping" value={money(order.shippingCharge ?? 0)} />}
+            <Info label="Grand total" value={money(order.totalAmount)} />
+          </div>
+        </section>
+        <section className="mt-6 bg-white p-6 shadow-sm sm:p-7">
+          <h2 className="text-2xl">Status history</h2>
+          <div className="mt-5 divide-y divide-black/10">
+            {history.length ? history.map((event) => <div className="py-4" key={event.id}><div className="flex justify-between gap-4"><p className="font-semibold">{event.fromStatus ? `${statusLabel(event.fromStatus)} → ` : "Order Created → "}{statusLabel(event.toStatus)}</p><time className="text-xs text-brand-gray">{date(event.createdAt)}</time></div></div>) : <p className="py-6 text-sm text-brand-gray">No status history available.</p>}
+          </div>
+        </section>
+      </Container>
+      <OrderPrintDocument className="print-only" history={history} order={order} />
+    </>
+  );
 }
 
-function Card({ title, children, printDocument }: { title: string; children: React.ReactNode; printDocument?: React.ReactNode }) {
-  return <section className="bg-white p-6 shadow-sm sm:p-7"><div className="flex items-center justify-between gap-4"><h2 className="text-xl">{title}</h2>{title === "Customer" && <button aria-label="Print order" className="no-print text-brand-purple" onClick={() => window.print()} title="Print Order" type="button"><PrintIcon /></button>}</div><div className="mt-5 space-y-3">{children}</div>{printDocument}</section>;
+function Card({ title, children, onPrint }: { title: string; children: React.ReactNode; onPrint?: () => void }) {
+  return (
+    <section className="bg-white p-6 shadow-sm sm:p-7">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-xl">{title}</h2>
+        {onPrint && (
+          <button
+            aria-label="Print order"
+            className="no-print text-brand-purple"
+            onClick={onPrint}
+            title="Print Order"
+            type="button"
+          >
+            <PrintIcon />
+          </button>
+        )}
+      </div>
+      <div className="mt-5 space-y-3">{children}</div>
+    </section>
+  );
 }
 
 function Info({ label, value }: { label: string; value: string }) { return <div className="flex justify-between gap-4 text-sm"><span className="text-brand-gray">{label}</span><span className="text-right font-semibold">{value}</span></div>; }

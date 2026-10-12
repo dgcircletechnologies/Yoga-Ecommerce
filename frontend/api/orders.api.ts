@@ -4,10 +4,162 @@ import type { Order, OrderStatus, OrderStatusHistory } from "@/types/order";
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 function fullCountryName(value?: string | null) { if (!value) return undefined; const normalized = value.trim(); return /^[A-Z]{2}$/.test(normalized) ? countryNames.of(normalized) ?? normalized : normalized; }
 function normalizedCallingCode(country: string | null | undefined, storedCode?: string | null) { if (storedCode?.trim()) return storedCode.trim().startsWith("+") ? storedCode.trim() : `+${storedCode.trim()}`; if (country && /^[A-Z]{2}$/.test(country)) { try { return `+${getCountryCallingCode(country as CountryCode)}`; } catch { return undefined; } } return undefined; }
-type ApiOrder = { id: string; userId: string; status: string; subtotal: number; discount: number; shippingCharge?: number; total: number; couponId?: string | null; couponCode?: string | null; couponDiscountType?: "PERCENTAGE" | null; couponDiscountValue?: number | null; couponDiscountAmount?: number | null; name: string; email: string; phone: string | null; countryCode?: string | null; address: string; city: string; state: string; country: string; postalCode: string; items: Array<{ id: string; productId: string | null; serviceId: string | null; type: "PRODUCT" | "SERVICE"; name: string; price: number; quantity: number; discount?: number; total: number; image: string | null; sessions: number | null }>; payment: { id?: string; status: "PENDING" | "PAID" | "REFUNDED" | "FAILED" | "CANCELLED"; currency: string; transactionId?: string | null; paymentMethod?: string | null; paidAt?: string | null } | null; createdAt: string; updatedAt?: string };
+type ApiOrder = {
+  id: string;
+  userId: string;
+  status: string;
+  subtotal: number;
+  discount: number;
+  shippingCharge?: number;
+  total: number;
+  couponId?: string | null;
+  couponCode?: string | null;
+  couponDiscountType?: "PERCENTAGE" | null;
+  couponDiscountValue?: number | null;
+  couponDiscountAmount?: number | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  countryCode?: string | null;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  items: Array<{
+    id: string;
+    productId: string | null;
+    serviceId: string | null;
+    type: "PRODUCT" | "SERVICE";
+    name: string;
+    price: number;
+    quantity: number;
+    discount?: number;
+    total: number;
+    image: string | null;
+    sessions: number | null;
+    weight?: number | null;
+    weightUnit?: string | null;
+    length?: number | null;
+    width?: number | null;
+    height?: number | null;
+    dimensionUnit?: string | null;
+    material?: string | null;
+    color?: string | null;
+    manufacturer?: string | null;
+    modelNumber?: string | null;
+    countryOfOrigin?: string | null;
+    careInstructions?: string | null;
+  }>;
+  payment: { id?: string; status: "PENDING" | "PAID" | "REFUNDED" | "FAILED" | "CANCELLED"; currency: string; transactionId?: string | null; paymentMethod?: string | null; paidAt?: string | null } | null;
+  shipment?: {
+    id: string;
+    orderId: string;
+    courierName: string;
+    trackingNumber?: string | null;
+    courierServiceType?: string | null;
+    packageType?: string | null;
+    packageDescription?: string | null;
+    weight?: number | null;
+    weightUnit?: string | null;
+    length?: number | null;
+    width?: number | null;
+    height?: number | null;
+    dimensionUnit?: string | null;
+    shippingCost?: number | null;
+    shippedAt?: string | null;
+    expectedDeliveryAt?: string | null;
+    deliveredAt?: string | null;
+    notes?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  createdAt: string;
+  updatedAt?: string;
+};
 type ListResponse = { success: boolean; data: ApiOrder[] };
 type OneResponse = { success: boolean; data: ApiOrder };
-function mapOrder(item: ApiOrder): Order { const hasProduct = item.items.some((orderItem) => orderItem.type === "PRODUCT"); const hasService = item.items.some((orderItem) => orderItem.type === "SERVICE"); const countryCode = normalizedCallingCode(item.country, item.countryCode); const countryName = fullCountryName(item.country); return { id: item.id, type: hasProduct && hasService ? "Mixed" : hasService ? "Service" : "Product", customer: { name: item.name, email: item.email, phone: item.phone ? `${countryCode ? `${countryCode} ` : ""}${item.phone}` : undefined, countryCode, address: [item.address, item.city, item.state, countryName, item.postalCode].filter(Boolean).join(", ") }, shippingAddress: { addressLine1: item.address, city: item.city, state: item.state, postalCode: item.postalCode, country: countryName }, items: item.items.map((orderItem) => ({ name: orderItem.name, quantity: orderItem.quantity, price: Number(orderItem.price), total: Number(orderItem.total), type: orderItem.type, image: orderItem.image ?? undefined, sessions: orderItem.sessions ?? undefined })), subtotal: Number(item.subtotal), discount: Number(item.discount), shippingCharge: Number(item.shippingCharge ?? 0), totalAmount: Number(item.total), couponCode: item.couponCode ?? undefined, couponDiscountType: item.couponDiscountType ?? undefined, couponDiscountValue: item.couponDiscountValue === null || item.couponDiscountValue === undefined ? undefined : Number(item.couponDiscountValue), couponDiscountAmount: item.couponDiscountAmount === null || item.couponDiscountAmount === undefined ? undefined : Number(item.couponDiscountAmount), displayTotal: `USD ${Number(item.total).toFixed(2)}`, currency: item.payment?.currency ?? "USD", paymentStatus: item.payment?.status === "PAID" ? "Paid" : item.payment?.status === "REFUNDED" ? "Refunded" : item.payment?.status === "FAILED" ? "Failed" : "Pending", status: item.status, createdAt: item.createdAt, updatedAt: item.updatedAt }; }
+function mapOrder(item: ApiOrder): Order {
+  const hasProduct = item.items.some((orderItem) => orderItem.type === "PRODUCT");
+  const hasService = item.items.some((orderItem) => orderItem.type === "SERVICE");
+  const countryCode = normalizedCallingCode(item.country, item.countryCode);
+  const countryName = fullCountryName(item.country);
+  return {
+    id: item.id,
+    type: hasProduct && hasService ? "Mixed" : hasService ? "Service" : "Product",
+    customer: {
+      name: item.name,
+      email: item.email,
+      phone: item.phone ? `${countryCode ? `${countryCode} ` : ""}${item.phone}` : undefined,
+      countryCode,
+      address: [item.address, item.city, item.state, countryName, item.postalCode].filter(Boolean).join(", "),
+    },
+    shippingAddress: {
+      addressLine1: item.address,
+      city: item.city,
+      state: item.state,
+      postalCode: item.postalCode,
+      country: countryName,
+    },
+    items: item.items.map((orderItem) => ({
+      name: orderItem.name,
+      quantity: orderItem.quantity,
+      price: Number(orderItem.price),
+      total: Number(orderItem.total),
+      type: orderItem.type,
+      image: orderItem.image ?? undefined,
+      sessions: orderItem.sessions ?? undefined,
+      weight: orderItem.weight ?? null,
+      weightUnit: orderItem.weightUnit ?? null,
+      length: orderItem.length ?? null,
+      width: orderItem.width ?? null,
+      height: orderItem.height ?? null,
+      dimensionUnit: orderItem.dimensionUnit ?? null,
+      material: orderItem.material ?? null,
+      color: orderItem.color ?? null,
+      manufacturer: orderItem.manufacturer ?? null,
+      modelNumber: orderItem.modelNumber ?? null,
+      countryOfOrigin: orderItem.countryOfOrigin ?? null,
+      careInstructions: orderItem.careInstructions ?? null,
+    })),
+    subtotal: Number(item.subtotal),
+    discount: Number(item.discount),
+    shippingCharge: Number(item.shippingCharge ?? 0),
+    totalAmount: Number(item.total),
+    couponCode: item.couponCode ?? undefined,
+    couponDiscountType: item.couponDiscountType ?? undefined,
+    couponDiscountValue: item.couponDiscountValue === null || item.couponDiscountValue === undefined ? undefined : Number(item.couponDiscountValue),
+    couponDiscountAmount: item.couponDiscountAmount === null || item.couponDiscountAmount === undefined ? undefined : Number(item.couponDiscountAmount),
+    displayTotal: `USD ${Number(item.total).toFixed(2)}`,
+    currency: item.payment?.currency ?? "USD",
+    paymentStatus: item.payment?.status === "PAID" ? "Paid" : item.payment?.status === "REFUNDED" ? "Refunded" : item.payment?.status === "FAILED" ? "Failed" : "Pending",
+    status: item.status,
+    shipment: item.shipment ? {
+      id: item.shipment.id,
+      orderId: item.shipment.orderId,
+      courierName: item.shipment.courierName,
+      trackingNumber: item.shipment.trackingNumber ?? null,
+      courierServiceType: item.shipment.courierServiceType ?? null,
+      packageType: item.shipment.packageType ?? null,
+      packageDescription: item.shipment.packageDescription ?? null,
+      weight: item.shipment.weight !== null && item.shipment.weight !== undefined ? Number(item.shipment.weight) : null,
+      weightUnit: item.shipment.weightUnit ?? null,
+      length: item.shipment.length !== null && item.shipment.length !== undefined ? Number(item.shipment.length) : null,
+      width: item.shipment.width !== null && item.shipment.width !== undefined ? Number(item.shipment.width) : null,
+      height: item.shipment.height !== null && item.shipment.height !== undefined ? Number(item.shipment.height) : null,
+      dimensionUnit: item.shipment.dimensionUnit ?? null,
+      shippingCost: item.shipment.shippingCost !== null && item.shipment.shippingCost !== undefined ? Number(item.shipment.shippingCost) : null,
+      shippedAt: item.shipment.shippedAt ?? null,
+      expectedDeliveryAt: item.shipment.expectedDeliveryAt ?? null,
+      deliveredAt: item.shipment.deliveredAt ?? null,
+      notes: item.shipment.notes ?? null,
+      createdAt: item.shipment.createdAt,
+      updatedAt: item.shipment.updatedAt,
+    } : null,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+}
 export type AdminOrdersResult = { items: Order[]; pagination: { page: number; limit: number; total: number; totalPages: number } };
 export async function getOrders(query: { page?: number; limit?: number; status?: string; other?: boolean; search?: string; sort?: string } = {}) { const params = new URLSearchParams(); Object.entries(query).forEach(([key, value]) => { if (value !== undefined && value !== "") params.set(key, String(value)); }); const response = await apiRequest<{ success: boolean; data: { items: ApiOrder[]; pagination: AdminOrdersResult["pagination"] } }>(`/orders${params.size ? `?${params.toString()}` : ""}`); return { items: response.data.items.map(mapOrder), pagination: response.data.pagination }; }
 export async function getOrder(id: string) { return mapOrder((await apiRequest<OneResponse>(`/orders/${id}`)).data); }
@@ -18,3 +170,67 @@ export async function getAdminOrderStats() { return (await apiRequest<{ success:
 export async function getOrderStatusHistory(id: string) { return (await apiRequest<{ success: boolean; data: OrderStatusHistory[] }>(`/orders/${encodeURIComponent(id)}/history`)).data; }
 export const getAdminOrderHistory = getOrderStatusHistory;
 export async function createOrder(data: { name: string; email: string; phone?: string; countryCode?: string; address: string; city: string; state: string; country: string; postalCode: string; currency?: string; couponCode?: string; items: Array<{ type: "PRODUCT" | "SERVICE"; productId?: string; serviceId?: string; quantity: number }> }) { return (await apiRequest<OneResponse>("/orders", { method: "POST", body: JSON.stringify(data) })).data; }
+
+// Shipment API integration
+export type CreateShipmentPayload = {
+  courierName: string;
+  trackingNumber?: string;
+  courierServiceType?: string;
+  packageType?: string;
+  packageDescription?: string;
+  notes?: string;
+  weight?: number;
+  weightUnit?: string;
+  length?: number;
+  width?: number;
+  height?: number;
+  dimensionUnit?: string;
+  shippingCost?: number;
+  shippedAt?: string;
+  expectedDeliveryAt?: string;
+  deliveredAt?: string;
+};
+
+export type UpdateShipmentPayload = {
+  courierName?: string;
+  trackingNumber?: string | null;
+  courierServiceType?: string | null;
+  packageType?: string | null;
+  packageDescription?: string | null;
+  notes?: string | null;
+  weight?: number | null;
+  weightUnit?: string | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  dimensionUnit?: string | null;
+  shippingCost?: number | null;
+  shippedAt?: string | null;
+  expectedDeliveryAt?: string | null;
+  deliveredAt?: string | null;
+};
+
+export async function createShipment(orderId: string, payload: CreateShipmentPayload) {
+  return (await apiRequest<{ success: boolean; data: any }>(`/orders/${encodeURIComponent(orderId)}/shipment`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function getShipment(orderId: string) {
+  return (await apiRequest<{ success: boolean; data: any }>(`/orders/${encodeURIComponent(orderId)}/shipment`)).data;
+}
+
+export async function updateShipment(orderId: string, payload: UpdateShipmentPayload) {
+  return (await apiRequest<{ success: boolean; data: any }>(`/orders/${encodeURIComponent(orderId)}/shipment`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function deleteShipment(orderId: string) {
+  return (await apiRequest<{ success: boolean; message: string }>(`/orders/${encodeURIComponent(orderId)}/shipment`, {
+    method: "DELETE",
+  }));
+}
+

@@ -1,10 +1,12 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import type { Role } from '../../common/enums/role.enum.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import { CreateShipmentDto } from './dto/create-shipment.dto.js';
+import { UpdateShipmentDto } from './dto/update-shipment.dto.js';
 import { OrdersService } from './orders.service.js';
 interface AuthenticatedUser { id: string; role: Role }
 @Controller('orders') @ApiTags('orders') @ApiBearerAuth()
@@ -18,4 +20,43 @@ export class OrdersController {
   @Get(':id') async findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return { success: true, data: await this.ordersService.findOne(id, user.id, user.role === 'ADMIN', user.role === 'ADMIN') }; }
   @Patch(':id/status') async updateStatus(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: UpdateOrderStatusDto) { if (user.role !== 'ADMIN') throw new ForbiddenException('Admin access required'); return { success: true, data: await this.ordersService.updateStatus(id, dto) }; }
   @Get('admin/stats') async adminStats(@CurrentUser() user: AuthenticatedUser) { if (user.role !== 'ADMIN') throw new ForbiddenException('Admin access required'); return { success: true, data: await this.ordersService.adminStats() }; }
+
+  // Shipment management
+  @Post(':id/shipment')
+  @ApiOperation({ summary: 'Create shipment for an order (Admin only)' })
+  async createShipment(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: CreateShipmentDto) {
+    if (user.role !== 'ADMIN') throw new ForbiddenException('Admin access required');
+    return { success: true, data: await this.ordersService.createShipment(id, dto) };
+  }
+
+  @Get(':id/shipment')
+  @ApiOperation({ summary: 'Get shipment for an order' })
+  async getShipment(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const isAdmin = user.role === 'ADMIN';
+    if (!isAdmin) {
+      await this.ordersService.findOneForUser(id, user.id);
+    }
+    return { success: true, data: await this.ordersService.getShipment(id, isAdmin) };
+  }
+
+  @Patch(':id/shipment')
+  @ApiOperation({ summary: 'Update shipment for an order (Admin only)' })
+  async updateShipment(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: UpdateShipmentDto) {
+    if (user.role !== 'ADMIN') throw new ForbiddenException('Admin access required');
+    return { success: true, data: await this.ordersService.updateShipment(id, dto) };
+  }
+
+  @Put(':id/shipment')
+  @ApiOperation({ summary: 'Update or replace shipment for an order (Admin only)' })
+  async putShipment(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: UpdateShipmentDto) {
+    if (user.role !== 'ADMIN') throw new ForbiddenException('Admin access required');
+    return { success: true, data: await this.ordersService.updateShipment(id, dto) };
+  }
+
+  @Delete(':id/shipment')
+  @ApiOperation({ summary: 'Delete shipment for an order if not dispatched (Admin only)' })
+  async deleteShipment(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    if (user.role !== 'ADMIN') throw new ForbiddenException('Admin access required');
+    return await this.ordersService.deleteShipment(id);
+  }
 }

@@ -8,4 +8,16 @@ export type CartItem = {
   quantity: number;
   referenceId?: string;
   type?: "PRODUCT" | "SERVICE";
+  weight?: number | null;
+  weightUnit?: string | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  dimensionUnit?: string | null;
+  material?: string | null;
+  color?: string | null;
+  manufacturer?: string | null;
+  modelNumber?: string | null;
+  countryOfOrigin?: string | null;
+  careInstructions?: string | null;
 };

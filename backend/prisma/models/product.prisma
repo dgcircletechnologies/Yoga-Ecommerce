@@ -36,6 +36,22 @@ model Product {
 
   orderItems OrderItem[]
 
+  // Physical specifications
+  weight        Decimal? @db.Decimal(10, 3)
+  weightUnit    String?  @db.VarChar(20)
+  length        Decimal? @db.Decimal(10, 2)
+  width         Decimal? @db.Decimal(10, 2)
+  height        Decimal? @db.Decimal(10, 2)
+  dimensionUnit String?  @db.VarChar(20)
+
+  // Additional specifications
+  material        String? @db.VarChar(150)
+  color           String? @db.VarChar(100)
+  manufacturer    String? @db.VarChar(150)
+  modelNumber     String? @db.VarChar(100)
+  countryOfOrigin String? @db.VarChar(100)
+  careInstructions String?
+
   @@index([categoryId])
   @@index([isActive])
   @@index([price])

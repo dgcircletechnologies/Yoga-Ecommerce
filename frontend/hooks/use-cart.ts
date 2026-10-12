@@ -16,6 +16,18 @@ export function productToCartItem(product: {
   description: string;
   price: string;
   image: string;
+  weight?: number | null;
+  weightUnit?: string | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  dimensionUnit?: string | null;
+  material?: string | null;
+  color?: string | null;
+  manufacturer?: string | null;
+  modelNumber?: string | null;
+  countryOfOrigin?: string | null;
+  careInstructions?: string | null;
 }): CartItem {
   return {
     id: product.id ?? product.name.toLowerCase().replaceAll(" ", "-"),
@@ -27,6 +39,18 @@ export function productToCartItem(product: {
     price: Number.parseFloat(product.price.replace(/[^0-9.]/g, "")) || 0,
     image: product.image,
     quantity: 1,
+    weight: product.weight,
+    weightUnit: product.weightUnit,
+    length: product.length,
+    width: product.width,
+    height: product.height,
+    dimensionUnit: product.dimensionUnit,
+    material: product.material,
+    color: product.color,
+    manufacturer: product.manufacturer,
+    modelNumber: product.modelNumber,
+    countryOfOrigin: product.countryOfOrigin,
+    careInstructions: product.careInstructions,
   };
 }
 

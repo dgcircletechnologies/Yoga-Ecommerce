@@ -1,37 +1,509 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getAdminServiceBooking, getAdminServiceBookingHistory, type AdminServiceBooking } from "@/api/service-bookings.api";
+import {
+  getAdminServiceBooking,
+  getAdminServiceBookingHistory,
+  type AdminServiceBooking,
+} from "@/api/service-bookings.api";
 import { siteInfo } from "@/lib/site-info";
 import { StatusIcon } from "@/components/orders/status-icon";
+import { Mail, Phone } from "@deemlol/next-icons";
 
-type BookingHistory = Array<{ id: string; action: string; description: string; performedAt: string }>;
-const date = (value: string, withTime = true) => new Intl.DateTimeFormat("en-US", withTime ? { dateStyle: "long", timeStyle: "short" } : { dateStyle: "long" }).format(new Date(value));
-const statusDate = (value: string) => new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
-const money = (value?: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value ?? 0);
-const label = (value: string) => value.replaceAll("_", " ").toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase());
+type BookingHistory = Array<{
+  id: string;
+  action: string;
+  description: string;
+  performedAt: string;
+  actorType?: string;
+}>;
 
-export function ServiceBookingPrintDocument({ id, booking: initialBooking, history: initialHistory, className = "" }: { id?: string; booking?: AdminServiceBooking; history?: BookingHistory; className?: string }) {
+const date = (value: string, withTime = true) =>
+  new Intl.DateTimeFormat("en-US", withTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }).format(
+    new Date(value)
+  );
+
+const statusDate = (value: string) =>
+  new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+
+const money = (value?: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value ?? 0);
+
+const statusLabel = (value: string) =>
+  value.replaceAll("_", " ").toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase());
+
+export function ServiceBookingPrintDocument({
+  id,
+  booking: initialBooking,
+  history: initialHistory,
+  className = "",
+}: {
+  id?: string;
+  booking?: AdminServiceBooking;
+  history?: BookingHistory;
+  className?: string;
+}) {
   const [booking, setBooking] = useState<AdminServiceBooking | undefined>(initialBooking);
   const [history, setHistory] = useState<BookingHistory>(initialHistory ?? []);
   const [error, setError] = useState("");
   const printed = useRef(false);
+  const originalTitle = useRef<string>("");
+
+  // Suppress browser default print headers (which print document.title)
   useEffect(() => {
-    if (initialBooking) { setBooking(initialBooking); setHistory(initialHistory ?? []); return; }
+    const handleBeforePrint = () => {
+      originalTitle.current = document.title;
+      document.title = " ";
+    };
+    const handleAfterPrint = () => {
+      if (originalTitle.current) {
+        document.title = originalTitle.current;
+      }
+    };
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (initialBooking) {
+      setBooking(initialBooking);
+      setHistory(initialHistory ?? []);
+      return;
+    }
     if (!id) return;
     let cancelled = false;
-    Promise.all([getAdminServiceBooking(id), getAdminServiceBookingHistory(id)]).then(([nextBooking, nextHistory]) => { if (cancelled) return; setBooking(nextBooking); setHistory(nextHistory); if (!printed.current) { printed.current = true; window.setTimeout(() => window.print(), 300); } }).catch((reason) => { if (!cancelled) setError(reason instanceof Error ? reason.message : "Unable to load service booking."); });
-    return () => { cancelled = true; };
+    Promise.all([getAdminServiceBooking(id), getAdminServiceBookingHistory(id)])
+      .then(([nextBooking, nextHistory]) => {
+        if (cancelled) return;
+        setBooking(nextBooking);
+        setHistory(nextHistory);
+        if (!printed.current) {
+          printed.current = true;
+          window.setTimeout(() => {
+            const prev = document.title;
+            document.title = " ";
+            window.print();
+            window.setTimeout(() => {
+              document.title = prev;
+            }, 1000);
+          }, 350);
+        }
+      })
+      .catch((reason) => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : "Unable to load service booking.");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id, initialBooking, initialHistory]);
-  if (error) return <main className={`print-document ${className}`}><p>{error}</p></main>;
-  if (!booking) return <main className={`print-document ${className}`}><p>Loading service booking…</p></main>;
-  const address = booking.customer.address ? [booking.customer.address.address, booking.customer.address.city, booking.customer.address.state, booking.customer.address.postalCode, booking.customer.address.country].filter(Boolean).join(", ") : "Not provided";
-  const previous = history[0];
-  return <main className={`print-document ${className}`}>
-    <header className="print-header"><div className="print-brand"><img alt={siteInfo.name} src={siteInfo.logo} /><div><p className="print-kicker">{siteInfo.name}</p><p className="print-contact">{siteInfo.email} · {siteInfo.phone}</p></div></div><div className="print-header-detail"><p className="print-kicker">Service booking</p><h1>Booking receipt</h1><p>Booking: <strong>{booking.id}</strong></p><p>Created: {date(booking.createdAt, false)}</p></div></header>
-    <div className="print-order-grid">
-      <div className="print-left-column"><section className="print-panel print-status-panel"><h2 className="print-section-title">Current status</h2><div className="print-status-pair"><StatusIcon service status={booking.status} /><div><strong>{label(booking.status)}</strong><span>Current status</span><small>{statusDate(booking.updatedAt || booking.createdAt)}</small></div></div>{previous && <div className="print-previous-status"><span className="print-label">Previous activity</span><div className="print-status-pair"><StatusIcon service status={previous.action} /><div><strong>{label(previous.action)}</strong><small>{statusDate(previous.performedAt)}</small></div></div></div>}</section><section className="print-panel print-history-panel"><h2 className="print-section-title">Booking history</h2><div className="print-vertical-timeline">{history.length ? history.map((event, index) => <div className={`print-history-item ${index === 0 ? "is-current" : ""}`} key={event.id}><div className="print-history-marker"><StatusIcon service status={event.action} /></div>{index < history.length - 1 && <span className="print-history-line" />}<div className="print-history-content"><strong>{label(event.action)}</strong><span>{statusDate(event.performedAt)}</span><span>{event.description}</span></div></div>) : <div className="print-history-content"><strong>Booking created</strong><span>{statusDate(booking.createdAt)}</span></div>}</div></section></div>
-      <div className="print-right-column"><section className="print-panel print-items-panel"><h2 className="print-section-title">Service details</h2><article className="print-item">{booking.service?.imageUrl ? <img alt="" className="print-product-image" src={booking.service.imageUrl} /> : <div className="print-product-placeholder">—</div>}<div className="print-item-content"><strong>{booking.service?.name ?? "Yoga service"}</strong><span>{booking.quantity} session{booking.quantity === 1 ? "" : "s"} · {money(booking.pricePerSession)} per session</span><span>{booking.service?.description || "Personalized Sattva wellness session"}</span></div></article><div className="print-total"><div><span>Sessions</span><strong>{booking.quantity}</strong></div><div><span>Payment status</span><strong>{booking.payment?.status || "Pending"}</strong></div><div className="print-grand-total"><span>Total</span><strong>{money(booking.totalAmount)}</strong></div></div></section><section className="print-panel print-details-panel"><div className="print-details-columns"><div><h2 className="print-section-title">Customer details</h2><p className="print-detail-text"><strong>{booking.customer.name}</strong><br />{booking.customer.email}<br />{booking.customer.phone || "Phone not provided"}<br />{address}</p></div><div><h2 className="print-section-title">Trainer details</h2><p className="print-detail-text"><strong>{booking.trainer.name}</strong><br />{booking.trainer.email || booking.trainer.phone || "Contact not provided"}<br />{booking.trainer.specialty || "Yoga & wellness trainer"}</p></div></div><div className="print-payment-row"><span>Order ID <strong>{booking.orderId}</strong></span><span>Currency <strong>{booking.payment?.currency || "USD"}</strong></span></div></section></div>
-    </div><footer className="print-footer"><span>Thank you for choosing {siteInfo.name}.</span><span>{siteInfo.email} · {siteInfo.phone}</span></footer>
-  </main>;
+
+  if (error) {
+    return (
+      <main className={`print-document ${className}`}>
+        <p className="p-6 text-red-600">{error}</p>
+      </main>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <main className={`print-document ${className}`}>
+        <p className="p-6 text-slate-500">Loading service booking…</p>
+      </main>
+    );
+  }
+
+  const customerPhone = booking.customer.phone || "Phone not provided";
+  const addressLines = booking.customer.address
+    ? [
+        booking.customer.address.address,
+        booking.customer.address.city,
+        booking.customer.address.state,
+        booking.customer.address.postalCode,
+        booking.customer.address.country || "United States",
+      ].filter(Boolean)
+    : ["Not provided"];
+
+  const timeline = history.length
+    ? history
+    : [
+        {
+          id: `created-${booking.id}`,
+          action: booking.status,
+          description: "Service booking registered and confirmed",
+          performedAt: booking.createdAt,
+          actorType: "SYSTEM",
+        },
+      ];
+
+  const currentStatus = booking.status;
+  const currentTimestamp = booking.updatedAt || booking.createdAt;
+
+  return (
+    <main className={`print-document ${className}`}>
+      {/* Top Header Banner with Highlighted Logo Badge & Company Name */}
+      <header className="ref-header">
+        <div className="ref-header-brand">
+          <div className="ref-header-logo-badge">
+            <img
+              alt={siteInfo.name}
+              className="ref-header-logo"
+              src="/logo.jpeg"
+            />
+          </div>
+          <div className="ref-header-company-group">
+            <div className="ref-header-company">{siteInfo.name}</div>
+            <div className="ref-header-subtitle">Official Booking Receipt</div>
+            <div className="ref-header-contact-row">
+              <span className="ref-header-contact-item">
+                <Phone aria-hidden size={11} className="ref-header-contact-icon" />
+                {siteInfo.phone}
+              </span>
+              <span>·</span>
+              <span className="ref-header-contact-item">
+                <Mail aria-hidden size={11} className="ref-header-contact-icon" />
+                {siteInfo.email}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="ref-header-detail">
+          <div className="ref-header-receipt-title">Service Booking</div>
+          <div className="ref-header-id">Booking #{booking.id.slice(0, 8).toUpperCase()}</div>
+          <div className="ref-header-meta">
+            <span>Created: {date(booking.createdAt, false)}</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Two-Column Layout */}
+      <div className="ref-order-grid">
+        {/* LEFT COLUMN: Current Status & Action History */}
+        <div className="ref-left-column">
+          {/* 1. Prominent Current Status Banner */}
+          <div className="ref-current-status-banner">
+            <div className="ref-current-status-icon">
+              <StatusIcon service size={26} status={currentStatus} />
+            </div>
+            <div>
+              <div className="ref-current-status-label">Current Status</div>
+              <div className="ref-current-status-title">{statusLabel(currentStatus)}</div>
+              <div className="mt-1 text-xs text-emerald-800">
+                Updated {statusDate(currentTimestamp)}
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Booking Action History Timeline */}
+          <section className="ref-card ref-card-history">
+            <div className="ref-card-header">
+              <span>Booking Action History</span>
+              <span className="text-[10px] font-normal lowercase tracking-normal text-slate-500">
+                {timeline.length} {timeline.length === 1 ? "entry" : "entries"}
+              </span>
+            </div>
+            <div className="ref-card-body">
+              <div className="ref-timeline">
+                {timeline.map((event, index) => {
+                  const isLatest = index === 0;
+                  const isLast = index === timeline.length - 1;
+                  return (
+                    <div
+                      className={`ref-timeline-step ${isLatest ? "is-latest" : ""}`}
+                      key={event.id}
+                    >
+                      <div className="ref-timeline-indicator">
+                        <div className="ref-timeline-dot">
+                          <StatusIcon service size={14} status={event.action} />
+                        </div>
+                        {!isLast && <div className="ref-timeline-line" />}
+                      </div>
+                      <div className="ref-timeline-info">
+                        <div className="ref-timeline-status">{statusLabel(event.action)}</div>
+                        <div className="ref-timeline-desc">{event.description}</div>
+                        <div className="ref-timeline-date">
+                          {statusDate(event.performedAt)}
+                          {event.actorType && (
+                            <span className="ml-1.5 font-semibold text-slate-400">
+                              · {event.actorType}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* RIGHT COLUMN: Service Details, Sessions, Trainer, Customer, Location, Policy, Terms */}
+        <div className="ref-right-column">
+          {/* 1. Service Details */}
+          <section className="ref-card ref-card-items">
+            <div className="ref-card-header">
+              <span>Service Details</span>
+              <span className="text-[10px] font-normal lowercase tracking-normal text-slate-500">
+                {booking.quantity} {booking.quantity === 1 ? "session" : "sessions"}
+              </span>
+            </div>
+            <div className="ref-card-body">
+              <article className="ref-item-row">
+                <div className="ref-item-image-box">
+                  {booking.service?.imageUrl ? (
+                    <img
+                      alt={booking.service.name}
+                      className="ref-item-image"
+                      src={booking.service.imageUrl}
+                    />
+                  ) : (
+                    <span className="text-xs font-semibold text-slate-400">Service</span>
+                  )}
+                </div>
+                <div className="ref-item-details">
+                  <div>
+                    <div className="ref-item-header">
+                      <div>
+                        <div className="ref-item-name">
+                          {booking.service?.name ?? "Yoga & Wellness Session"}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {booking.service?.description || "Personalized Sattva yoga and mindfulness session"}
+                        </div>
+                      </div>
+                      <div className="ref-item-price">{money(booking.totalAmount)}</div>
+                    </div>
+
+                    <div className="ref-item-specs">
+                      <span className="ref-item-spec-tag">
+                        <strong>Sessions:</strong> {booking.quantity}
+                      </span>
+                      <span className="ref-item-spec-tag">
+                        <strong>Rate:</strong> {money(booking.pricePerSession)} / session
+                      </span>
+                      <span className="ref-item-spec-tag">
+                        <strong>Order ID:</strong> #{booking.orderId.slice(0, 8).toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 text-[11px] text-slate-500">
+                    {booking.quantity} {booking.quantity === 1 ? "session" : "sessions"} ×{" "}
+                    {money(booking.pricePerSession)} per session
+                  </div>
+                </div>
+              </article>
+
+              {/* Totals Box */}
+              <div className="ref-totals-box">
+                <div className="ref-totals-row">
+                  <span className="text-slate-600">Total Booked Sessions</span>
+                  <span className="font-semibold text-slate-900">{booking.quantity} sessions</span>
+                </div>
+                <div className="ref-totals-row">
+                  <span className="text-slate-600">Rate Per Session</span>
+                  <span className="font-semibold text-slate-900">{money(booking.pricePerSession)}</span>
+                </div>
+                <div className="ref-totals-grand">
+                  <span>Total Amount</span>
+                  <span>{money(booking.totalAmount)}</span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between border-t border-blue-200/60 pt-2 text-[11px] text-slate-600">
+                  <span>
+                    Payment Status:{" "}
+                    <strong className="text-slate-900">{booking.payment?.status || "Paid"}</strong>
+                  </span>
+                  <span>
+                    Currency:{" "}
+                    <strong className="text-slate-900">{booking.payment?.currency || "USD"}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 2. Scheduled Sessions */}
+          <section className="ref-card ref-card-shipment">
+            <div className="ref-card-header">
+              <span>Scheduled Sessions ({booking.sessions.length})</span>
+            </div>
+            <div className="ref-card-body">
+              {booking.sessions.length > 0 ? (
+                <div className="divide-y divide-slate-100">
+                  {booking.sessions.map((session, index) => (
+                    <div
+                      className="flex items-center justify-between py-2 text-xs"
+                      key={session.id}
+                    >
+                      <div>
+                        <span className="font-semibold text-slate-900">Session {index + 1}</span>
+                        <span className="ml-2 text-slate-600">{date(session.scheduledAt, true)}</span>
+                      </div>
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-700">
+                        {session.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs italic text-slate-500">No scheduled sessions recorded.</p>
+              )}
+            </div>
+          </section>
+
+          {/* 3. Assigned Trainer */}
+          <section className="ref-card ref-card-trainer">
+            <div className="ref-card-header">Assigned Trainer & Verification</div>
+            <div className="ref-card-body">
+              <div className="ref-info-grid">
+                <div className="ref-info-item">
+                  <span className="ref-info-label">Trainer Name</span>
+                  <span className="ref-info-value">{booking.trainer.name}</span>
+                </div>
+                <div className="ref-info-item">
+                  <span className="ref-info-label">Specialty</span>
+                  <span className="ref-info-value font-normal text-slate-700">
+                    {booking.trainer.specialty || "Certified Yoga Instructor"}
+                  </span>
+                </div>
+                <div className="ref-info-item">
+                  <span className="ref-info-label">Contact Email</span>
+                  <span className="ref-info-value font-normal text-slate-700">
+                    {booking.trainer.email || "—"}
+                  </span>
+                </div>
+                <div className="ref-info-item">
+                  <span className="ref-info-label">Contact Phone</span>
+                  <span className="ref-info-value font-normal text-slate-700">
+                    {booking.trainer.phone || "—"}
+                  </span>
+                </div>
+                <div className="ref-info-item">
+                  <span className="ref-info-label">Trainer Confirmation</span>
+                  <span className="ref-info-value text-blue-700">
+                    {booking.trainerConfirmationStatus}
+                  </span>
+                </div>
+                <div className="ref-info-item">
+                  <span className="ref-info-label">OTP Verification</span>
+                  <span className="ref-info-value text-emerald-700">
+                    {booking.trainerConfirmedAt ? "Verified" : "Pending"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. Trainer Evidence / Session Photos */}
+          <section className="ref-card ref-card-evidence">
+            <div className="ref-card-header">
+              <span>Trainer Session Photos ({booking.sceneImages?.length ?? 0})</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                Review: {statusLabel(booking.imageReviewStatus || "NOT_UPLOADED")}
+              </span>
+            </div>
+            <div className="ref-card-body">
+              {booking.sceneImages && booking.sceneImages.length > 0 ? (
+                <div className="ref-evidence-grid">
+                  {booking.sceneImages.map((img, idx) => (
+                    <div className="ref-evidence-item" key={img.imagePublicId || idx}>
+                      <div className="ref-evidence-img-box">
+                        <img
+                          alt={`Trainer session photo ${idx + 1}`}
+                          className="ref-evidence-img"
+                          src={img.imageUrl}
+                        />
+                      </div>
+                      <div className="ref-evidence-caption">
+                        <span className="font-semibold text-slate-700">Photo {idx + 1}</span>
+                        {img.uploadedAt && <span>{statusDate(img.uploadedAt)}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs italic text-slate-500">
+                  No session photos have been uploaded by the trainer yet.
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* 5. Customer Details */}
+          <section className="ref-card ref-card-customer">
+            <div className="ref-card-header">Customer Details</div>
+            <div className="ref-card-body">
+              <div className="ref-info-grid">
+                <div className="ref-info-item">
+                  <span className="ref-info-label">Full Name</span>
+                  <span className="ref-info-value">{booking.customer.name}</span>
+                </div>
+                <div className="ref-info-item">
+                  <span className="ref-info-label">Email Address</span>
+                  <span className="ref-info-value flex items-center gap-1.5 font-normal">
+                    <Mail aria-hidden size={13} />
+                    {booking.customer.email}
+                  </span>
+                </div>
+                <div className="ref-info-item col-span-2">
+                  <span className="ref-info-label">Phone Number</span>
+                  <span className="ref-info-value flex items-center gap-1.5 font-normal">
+                    <Phone aria-hidden size={13} />
+                    {customerPhone}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 5. Service Location */}
+          <section className="ref-card ref-card-shipping">
+            <div className="ref-card-header">Service Location</div>
+            <div className="ref-card-body">
+              <div className="ref-address-block">
+                <div className="font-semibold text-slate-900">{booking.customer.name}</div>
+                {addressLines.map((line, idx) => (
+                  <div key={idx}>{line}</div>
+                ))}
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                  <Phone aria-hidden size={12} /> {customerPhone}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 6. Rescheduling & Cancellation Policy */}
+          <section className="ref-card ref-card-return">
+            <div className="ref-card-header">Rescheduling & Cancellation Policy</div>
+            <div className="ref-card-body">
+              <p className="ref-policy-text">
+                Sessions may be rescheduled with at least 24 hours prior notice through your dashboard or customer support. Cancellations made within 24 hours of scheduled session time are non-refundable. Expired sessions cannot be credited or transferred.
+              </p>
+            </div>
+          </section>
+
+          {/* 7. Terms & Conditions */}
+          <section className="ref-card ref-card-terms">
+            <div className="ref-card-header">Terms & Conditions</div>
+            <div className="ref-card-body">
+              <p className="ref-policy-text">
+                All wellness and yoga sessions are conducted by certified Sattva instructors. Clients must disclose any relevant physical conditions, injuries, or limitations prior to practice. Sattva Yoga and its instructors are not liable for pre-existing medical conditions. By booking, you agree to our standard service terms.
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="ref-footer">
+        <div>Thank you for choosing {siteInfo.name}. We appreciate your dedication to wellness and mindful living.</div>
+        <div>{siteInfo.email} · {siteInfo.phone}</div>
+      </footer>
+    </main>
+  );
 }

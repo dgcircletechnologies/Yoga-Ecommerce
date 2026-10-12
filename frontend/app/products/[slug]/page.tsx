@@ -52,6 +52,14 @@ function ProductDetails({ product }: { product: Product }) {
             <div className="mt-6 p-5">
               <h2 className="text-2xl">{product.name} </h2>
               <InfoRow label="Category" value={product.category} />
+              {product.weight !== null && product.weight !== undefined && product.weight > 0 && (
+                <InfoRow label="Weight" value={`${product.weight} ${product.weightUnit || "g"}`} />
+              )}
+              {(product.length || product.width || product.height) ? (
+                <InfoRow label="Dimensions" value={`${[product.length, product.width, product.height].filter(Boolean).join(" × ")} ${product.dimensionUnit || "cm"}`} />
+              ) : null}
+              {product.material && <InfoRow label="Material" value={product.material} />}
+              {product.color && <InfoRow label="Color" value={product.color} />}
               <InfoRow label="Shipping" value={product.shippingIncluded ? "Shipping included in cost" : "Free shipping"} />
               <InfoRow label="Estimated sales tax" value={product.taxIncluded ? "Included in product cost" : "Not included in product cost"} />
               <p className="pt-5">{product.stock ? <span className="text-green-500">In Stock</span> : <span className="text-red-500">Out of Stock</span>}</p>

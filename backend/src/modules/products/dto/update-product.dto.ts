@@ -14,4 +14,78 @@ export class UpdateProductDto {
   @IsOptional() @Type(() => Boolean) @IsBoolean() available?: boolean;
   @IsOptional() @Transform(({ value }) => value === true || value === false ? value : value === 'true' ? true : value === 'false' ? false : value) @IsBoolean() shippingIncluded?: boolean;
   @IsOptional() @Transform(({ value }) => value === true || value === false ? value : value === 'true' ? true : value === 'false' ? false : value) @IsBoolean() taxIncluded?: boolean;
+
+  // Physical specifications
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : Number(value))
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  weight?: number | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : String(value).trim().toLowerCase())
+  @IsString()
+  @MaxLength(20)
+  weightUnit?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : Number(value))
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  length?: number | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : Number(value))
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  width?: number | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : Number(value))
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  height?: number | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : String(value).trim().toLowerCase())
+  @IsString()
+  @MaxLength(20)
+  dimensionUnit?: string | null;
+
+  // Additional specifications
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : String(value).trim())
+  @IsString()
+  @MaxLength(150)
+  material?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : String(value).trim())
+  @IsString()
+  @MaxLength(100)
+  color?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : String(value).trim())
+  @IsString()
+  @MaxLength(150)
+  manufacturer?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : String(value).trim())
+  @IsString()
+  @MaxLength(100)
+  modelNumber?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : String(value).trim())
+  @IsString()
+  @MaxLength(100)
+  countryOfOrigin?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === '' || value === null || value === 'null' ? null : value === undefined ? undefined : String(value).trim())
+  @IsString()
+  @MaxLength(1000)
+  careInstructions?: string | null;
 }

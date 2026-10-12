@@ -4,20 +4,42 @@ import { useState } from "react";
 import Image from "next/image";
 
 import type { Product } from "@/types/product";
+import { formatDimensions, formatWeight } from "@/utils/specifications";
 
 type ProductDetailsTabsProps = { product: Product };
 
 export function ProductDetailsTabs({ product }: ProductDetailsTabsProps) {
-  const [activeTab, setActiveTab] = useState<"details" | "reviews">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "specifications" | "reviews">("details");
+  const weightStr = formatWeight(product.weight, product.weightUnit);
+  const dimStr = formatDimensions(product.length, product.width, product.height, product.dimensionUnit);
+  const hasSpecs = Boolean(
+    weightStr ||
+    dimStr ||
+    product.material ||
+    product.color ||
+    product.manufacturer ||
+    product.modelNumber ||
+    product.countryOfOrigin ||
+    product.careInstructions
+  );
 
   return (
     <div className="mt-8 ">
       <div className="flex flex-wrap border-b border-black/10">
         <button className={`min-w-35 flex-1 px-5 py-4 text-sm transition-colors ${activeTab === "details" ? "bg-brand-purple text-white" : "bg-brand-light-gray text-brand-dark hover:text-brand-purple"}`} onClick={() => setActiveTab("details")} type="button">Details</button>
+        {hasSpecs && (
+          <button className={`min-w-35 flex-1 px-5 py-4 text-sm transition-colors ${activeTab === "specifications" ? "bg-brand-purple text-white" : "bg-brand-light-gray text-brand-dark hover:text-brand-purple"}`} onClick={() => setActiveTab("specifications")} type="button">Specifications</button>
+        )}
         <button className={`min-w-35 flex-1 px-5 py-4 text-sm transition-colors ${activeTab === "reviews" ? "bg-brand-purple text-white" : "bg-brand-light-gray text-brand-dark hover:text-brand-purple"}`} onClick={() => setActiveTab("reviews")} type="button">Reviews</button>
       </div>
       <div className="px-5 py-8 sm:px-8">
-        {activeTab === "details" ? <DetailsContent product={product} /> : <ReviewsContent />}
+        {activeTab === "details" ? (
+          <DetailsContent product={product} />
+        ) : activeTab === "specifications" ? (
+          <SpecificationsContent product={product} />
+        ) : (
+          <ReviewsContent />
+        )}
       </div>
     </div>
   );
@@ -31,6 +53,45 @@ function DetailsContent({ product }: ProductDetailsTabsProps) {
       <p className="mt-5 text-sm leading-7 text-brand-gray">Designed to become a considered part of your everyday ritual, this piece balances comfort, function, and a calm, lasting finish.</p>
       <h3 className="mt-8 text-2xl">Made for your practice</h3>
       <p className="mt-4 text-sm leading-7 text-brand-gray">Use it at home, in the studio, or wherever you make space to move and breathe. Each detail is chosen to support a more present practice.</p>
+    </div>
+  );
+}
+
+function SpecificationsContent({ product }: ProductDetailsTabsProps) {
+  const specs: Array<{ label: string; value: string }> = [];
+  const weightStr = formatWeight(product.weight, product.weightUnit);
+  if (weightStr) specs.push({ label: "Weight", value: weightStr });
+  const dimStr = formatDimensions(product.length, product.width, product.height, product.dimensionUnit);
+  if (dimStr) specs.push({ label: "Dimensions", value: dimStr });
+  if (product.material) specs.push({ label: "Material", value: product.material });
+  if (product.color) specs.push({ label: "Color", value: product.color });
+  if (product.manufacturer) specs.push({ label: "Manufacturer / Brand", value: product.manufacturer });
+  if (product.modelNumber) specs.push({ label: "Model Number", value: product.modelNumber });
+  if (product.countryOfOrigin) specs.push({ label: "Country of Origin", value: product.countryOfOrigin });
+  if (product.careInstructions) specs.push({ label: "Care Instructions", value: product.careInstructions });
+
+  return (
+    <div>
+      <h2>Product Specifications</h2>
+      <div className="mt-6 overflow-hidden rounded-md border border-black/10">
+        <table className="w-full border-collapse text-left text-sm">
+          <tbody>
+            {specs.map((item, index) => (
+              <tr
+                className="border-b border-black/5 last:border-0 hover:bg-brand-light-gray/50"
+                key={item.label}
+              >
+                <th className="w-1/3 bg-brand-light-gray/60 px-5 py-3.5 font-semibold text-brand-dark sm:w-1/4">
+                  {item.label}
+                </th>
+                <td className="px-5 py-3.5 text-brand-gray">
+                  {item.value}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { getMyOrder, getOrderStatusHistory } from "@/api/orders.api";
 import { useCurrency } from "@/context/currency-context";
 import { beginPayment } from "@/lib/checkout/payment-service";
+import { CustomerShipmentSummary } from "@/components/orders/customer-shipment-summary";
 import { OrderStatusBadge } from "@/components/admin/orders/order-status-badge";
 import { OrderStatusTimeline } from "@/components/orders/order-status-timeline";
 import { PageHero } from "@/components/layout/page-hero";
@@ -66,6 +67,12 @@ export function OrderDetailsPage({ id }: { id: string }) {
         </div>
       </div>
 
+      {order.shipment && (
+        <div className="mt-8">
+          <CustomerShipmentSummary shipment={order.shipment} variant="detail" />
+        </div>
+      )}
+
       <section className="mt-8 border border-black/10 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-2xl">Order status history</h2>
         <div className="mt-7"><OrderStatusTimeline history={history} status={order.status} /></div>
@@ -77,7 +84,20 @@ export function OrderDetailsPage({ id }: { id: string }) {
           <h2 className="text-2xl">Items</h2>
           <div className="mt-6 divide-y divide-black/10">{order.items.map((item, index) => <div className="flex gap-4 py-5 first:pt-0 last:pb-0" key={`${item.name}-${index}`}>
             {item.image ? <div className="relative h-20 w-20 shrink-0 overflow-hidden bg-brand-light-gray"><Image alt="" className="object-cover" fill sizes="80px" src={item.image} unoptimized /></div> : <div className="h-20 w-20 shrink-0 bg-brand-light-gray" />}
-            <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{item.name}</p><p className="mt-1 text-xs uppercase tracking-[0.12em] text-brand-purple">{item.type === "SERVICE" ? `Service${item.sessions ? ` · ${item.sessions} sessions` : ""}` : "Product"}</p><p className="mt-2 text-sm text-brand-gray">Qty {item.quantity} · {item.price === undefined ? "—" : formatPrice(item.price)}</p></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{item.name}</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.12em] text-brand-purple">{item.type === "SERVICE" ? `Service${item.sessions ? ` · ${item.sessions} sessions` : ""}` : "Product"}</p>
+              {(() => {
+                const parts: string[] = [];
+                if (item.weight !== null && item.weight !== undefined && Number(item.weight) > 0) parts.push(`Weight: ${item.weight} ${item.weightUnit || "g"}`);
+                if (item.length || item.width || item.height) parts.push(`Dimensions: ${[item.length, item.width, item.height].filter(Boolean).join(" × ")} ${item.dimensionUnit || "cm"}`);
+                if (item.material) parts.push(`Material: ${item.material}`);
+                if (item.color) parts.push(`Color: ${item.color}`);
+                if (!parts.length) return null;
+                return <p className="mt-1 text-xs text-brand-gray">{parts.join(" · ")}</p>;
+              })()}
+              <p className="mt-2 text-sm text-brand-gray">Qty {item.quantity} · {item.price === undefined ? "—" : formatPrice(item.price)}</p>
+            </div>
             <p className="text-sm font-semibold">{item.total === undefined ? "—" : formatPrice(item.total)}</p>
           </div>)}</div>
         </section>

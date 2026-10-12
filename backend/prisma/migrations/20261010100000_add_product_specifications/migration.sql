@@ -1,0 +1,30 @@
+-- Add optional physical and additional specifications to Product
+ALTER TABLE "Product"
+  ADD COLUMN IF NOT EXISTS "weight" DECIMAL(10, 3),
+  ADD COLUMN IF NOT EXISTS "weightUnit" VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS "length" DECIMAL(10, 2),
+  ADD COLUMN IF NOT EXISTS "width" DECIMAL(10, 2),
+  ADD COLUMN IF NOT EXISTS "height" DECIMAL(10, 2),
+  ADD COLUMN IF NOT EXISTS "dimensionUnit" VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS "material" VARCHAR(150),
+  ADD COLUMN IF NOT EXISTS "color" VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS "manufacturer" VARCHAR(150),
+  ADD COLUMN IF NOT EXISTS "modelNumber" VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS "countryOfOrigin" VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS "careInstructions" TEXT;
+
+-- Add optional physical and additional specifications snapshot to OrderItem
+ALTER TABLE "OrderItem"
+  ADD COLUMN IF NOT EXISTS "weight" DECIMAL(10, 3),
+  ADD COLUMN IF NOT EXISTS "weightUnit" VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS "length" DECIMAL(10, 2),
+  ADD COLUMN IF NOT EXISTS "width" DECIMAL(10, 2),
+  ADD COLUMN IF NOT EXISTS "height" DECIMAL(10, 2),
+  ADD COLUMN IF NOT EXISTS "dimensionUnit" VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS "material" VARCHAR(150),
+  ADD COLUMN IF NOT EXISTS "color" VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS "manufacturer" VARCHAR(150),
+  ADD COLUMN IF NOT EXISTS "modelNumber" VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS "countryOfOrigin" VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS "careInstructions" TEXT;
+
