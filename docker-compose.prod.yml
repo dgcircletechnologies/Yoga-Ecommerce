@@ -34,6 +34,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
       args:
+        DATABASE_URL: postgresql://ci_user:ci_password@localhost:5432/ci_database
         BACKEND_INTERNAL_PORT: ${BACKEND_INTERNAL_PORT:?BACKEND_INTERNAL_PORT must be set}
 
     container_name: yoga-fitness-backend-prod

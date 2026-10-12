@@ -3,7 +3,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
 
 COPY package*.json ./
 
@@ -30,6 +30,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
-EXPOSE $BACKEND_INTERNAL_PORT
+EXPOSE ${BACKEND_INTERNAL_PORT}
 
 CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:prod"]
