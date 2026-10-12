@@ -17,8 +17,39 @@ async function bootstrap() {
       res.status(200).send({ status: 'ok' });
     });
 
+  const rawOrigins = [
+    corsOrigin,
+    config.get<string>('mail.adminUrl'),
+  ]
+    .filter(Boolean)
+    .flatMap((value) => value!.split(','))
+    .map((value) => value.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
+  const allowedOrigins = new Set<string>();
+  for (const entry of rawOrigins) {
+    allowedOrigins.add(entry);
+    try {
+      const parsed = new URL(entry);
+      const baseHost = parsed.hostname.replace(/^www\./, '');
+      const hosts = [baseHost, `www.${baseHost}`];
+      const protocols = ['http:', 'https:'];
+      for (const protocol of protocols) {
+        for (const host of hosts) {
+          allowedOrigins.add(`${protocol}//${host}`);
+          if (parsed.port) {
+            allowedOrigins.add(`${protocol}//${host}:${parsed.port}`);
+          }
+        }
+      }
+    } catch {
+      // Keep raw entry if it is not a full URL
+    }
+  }
+
   app.enableCors({
-    origin: corsOrigin.split(',').map((origin) => origin.trim()),
+    origin: Array.from(allowedOrigins),
+    credentials: true,
   });
   app.useGlobalPipes(
     new ValidationPipe({

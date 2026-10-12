@@ -101,7 +101,7 @@ jobs:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST || vars.HOSTINGER_HOST }}
           HOSTINGER_USER: ${{ secrets.HOSTINGER_USERNAME || vars.HOSTINGER_USERNAME }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT || vars.HOSTINGER_PORT }}
-          HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD }}
+          HOSTINGER_PASSWORD: ${{ secrets.HOSTINGER_PASSWORD || vars.HOSTINGER_PASSWORD }}
           HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR || vars.HOSTINGER_APP_DIR }}
 
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL }}
@@ -117,9 +117,9 @@ jobs:
           POSTGRES_PORT: ${{ secrets.POSTGRES_PORT || vars.POSTGRES_PORT || '5434' }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB || vars.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER || vars.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || vars.POSTGRES_PASSWORD }}
 
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || vars.JWT_SECRET }}
           JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN || vars.JWT_EXPIRES_IN }}
 
           FRONTEND_URL: ${{ secrets.FRONTEND_URL || vars.FRONTEND_URL }}
@@ -129,19 +129,19 @@ jobs:
           MAIL_PORT: ${{ secrets.MAIL_PORT || vars.MAIL_PORT }}
           MAIL_SECURE: ${{ secrets.MAIL_SECURE || vars.MAIL_SECURE }}
           MAIL_USER: ${{ secrets.MAIL_USER || vars.MAIL_USER }}
-          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD || vars.MAIL_PASSWORD }}
           MAIL_FROM_EMAIL: ${{ secrets.MAIL_FROM_EMAIL || vars.MAIL_FROM_EMAIL }}
           MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME || vars.MAIL_FROM_NAME }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
 
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME || vars.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY || vars.CLOUDINARY_API_KEY }}
-          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET || vars.CLOUDINARY_API_SECRET }}
           CLOUDINARY_PRODUCT_FOLDER: ${{ secrets.CLOUDINARY_PRODUCT_FOLDER || vars.CLOUDINARY_PRODUCT_FOLDER }}
 
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID || vars.RAZORPAY_KEY_ID }}
-          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
-          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET || vars.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET || vars.RAZORPAY_WEBHOOK_SECRET }}
 
           SEED_ADMIN_NAME: ${{ secrets.SEED_ADMIN_NAME || vars.SEED_ADMIN_NAME || 'Yoga Administrator' }}
           SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL || vars.SEED_ADMIN_EMAIL || secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
@@ -280,9 +280,9 @@ jobs:
           POSTGRES_PORT: ${{ secrets.POSTGRES_PORT || vars.POSTGRES_PORT || '5434' }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB || vars.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER || vars.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || vars.POSTGRES_PASSWORD }}
 
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || vars.JWT_SECRET }}
           JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN || vars.JWT_EXPIRES_IN }}
 
           FRONTEND_URL: ${{ secrets.FRONTEND_URL || vars.FRONTEND_URL }}
@@ -292,19 +292,19 @@ jobs:
           MAIL_PORT: ${{ secrets.MAIL_PORT || vars.MAIL_PORT }}
           MAIL_SECURE: ${{ secrets.MAIL_SECURE || vars.MAIL_SECURE }}
           MAIL_USER: ${{ secrets.MAIL_USER || vars.MAIL_USER }}
-          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD || vars.MAIL_PASSWORD }}
           MAIL_FROM_EMAIL: ${{ secrets.MAIL_FROM_EMAIL || vars.MAIL_FROM_EMAIL }}
           MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME || vars.MAIL_FROM_NAME }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
 
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME || vars.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY || vars.CLOUDINARY_API_KEY }}
-          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET || vars.CLOUDINARY_API_SECRET }}
           CLOUDINARY_PRODUCT_FOLDER: ${{ secrets.CLOUDINARY_PRODUCT_FOLDER || vars.CLOUDINARY_PRODUCT_FOLDER }}
 
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID || vars.RAZORPAY_KEY_ID }}
-          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
-          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET || vars.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET || vars.RAZORPAY_WEBHOOK_SECRET }}
 
           SEED_ADMIN_NAME: ${{ secrets.SEED_ADMIN_NAME || vars.SEED_ADMIN_NAME || 'Yoga Administrator' }}
           SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL || vars.SEED_ADMIN_EMAIL || secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
