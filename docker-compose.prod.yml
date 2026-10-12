@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile.prod
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
+        INTERNAL_API_URL: ${INTERNAL_API_URL:?INTERNAL_API_URL must be set}
+        NEXT_PUBLIC_RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
         FRONTEND_INTERNAL_PORT: ${FRONTEND_INTERNAL_PORT:?FRONTEND_INTERNAL_PORT must be set}
 
     container_name: yoga-fitness-frontend-prod
@@ -34,7 +36,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
       args:
-        DATABASE_URL: postgresql://ci_user:ci_password@localhost:5432/ci_database
+        DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
         BACKEND_INTERNAL_PORT: ${BACKEND_INTERNAL_PORT:?BACKEND_INTERNAL_PORT must be set}
 
     container_name: yoga-fitness-backend-prod
@@ -90,12 +92,12 @@ services:
       test:
         [
           "CMD-SHELL",
-          "wget --no-verbose --tries=1 --spider http://$${BACKEND_HOST}:$${BACKEND_INTERNAL_PORT}/health || exit 1"
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:$${BACKEND_INTERNAL_PORT}/api/v1/health || exit 1"
         ]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 6
+      start_period: 60s
 
     networks:
       - yoga-fitness-network

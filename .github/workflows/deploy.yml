@@ -1,4 +1,3 @@
-
 name: Yoga Fitness CI/CD
 
 on:
@@ -54,8 +53,10 @@ jobs:
           file: ./frontend/Dockerfile.prod
           push: false
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-            FRONTEND_INTERNAL_PORT=${{ secrets.FRONTEND_INTERNAL_PORT }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1' }}
+            INTERNAL_API_URL=${{ secrets.INTERNAL_API_URL || 'http://backend:4000/api/v1' }}
+            NEXT_PUBLIC_RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            FRONTEND_INTERNAL_PORT=${{ secrets.FRONTEND_INTERNAL_PORT || '3000' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -176,6 +177,10 @@ jobs:
             MAIL_FROM_EMAIL
             ADMIN_EMAIL
 
+            CLOUDINARY_CLOUD_NAME
+            CLOUDINARY_API_KEY
+            CLOUDINARY_API_SECRET
+
             RAZORPAY_KEY_ID
             RAZORPAY_KEY_SECRET
           )
@@ -294,7 +299,7 @@ jobs:
         run: |
           set -e
 
-          cat > /tmp/yoga-fitness.production.env <<EOF
+          cat <<EOF | sed 's/^[[:space:]]*//' > /tmp/yoga-fitness.production.env
           NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
           INTERNAL_API_URL=${INTERNAL_API_URL}
 
@@ -483,9 +488,11 @@ jobs:
           # ----------------------------------------------------
           echo "Starting production containers..."
 
-          docker compose \
-            -f docker-compose.prod.yml \
-            up -d --remove-orphans
+          if ! docker compose -f docker-compose.prod.yml up -d --remove-orphans; then
+            echo "ERROR: Containers failed to become healthy. Dumping backend logs:"
+            docker compose -f docker-compose.prod.yml logs --tail=100 backend || true
+            exit 1
+          fi
 
 
           # ----------------------------------------------------
@@ -511,4 +518,3 @@ jobs:
           echo "========================================="
 
           REMOTE_SCRIPT
-

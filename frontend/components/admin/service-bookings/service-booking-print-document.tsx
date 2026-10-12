@@ -128,17 +128,150 @@ export function ServiceBookingPrintDocument({
       ].filter(Boolean)
     : ["Not provided"];
 
-  const timeline = history.length
-    ? history
-    : [
-        {
-          id: `created-${booking.id}`,
-          action: booking.status,
-          description: "Service booking registered and confirmed",
-          performedAt: booking.createdAt,
-          actorType: "SYSTEM",
-        },
-      ];
+  const findHistoryTime = (...actions: string[]) =>
+    history.find((item) => actions.includes(item.action))?.performedAt;
+
+  const isTrainerConfirmed =
+    booking.trainerConfirmationStatus === "CONFIRMED" ||
+    Boolean(booking.trainerConfirmedAt) ||
+    history.some((item) =>
+      ["TRAINER_CONFIRMED", "TRAINER_REACHED", "OTP_CONFIRMED"].includes(item.action)
+    );
+
+  const trainerReachedTime =
+    findHistoryTime("TRAINER_REACHED", "TRAINER_CONFIRMED") ||
+    booking.trainerConfirmedAt ||
+    booking.updatedAt ||
+    booking.createdAt;
+
+  const otpConfirmedTime =
+    findHistoryTime("OTP_CONFIRMED", "TRAINER_CONFIRMED") ||
+    booking.trainerConfirmedAt ||
+    trainerReachedTime;
+
+  const hasUploadedImages =
+    (booking.sceneImages?.length ?? 0) > 0 ||
+    history.some((item) => item.action === "IMAGES_UPLOADED");
+
+  const imagesUploadedTime =
+    booking.sceneImages?.[0]?.uploadedAt ||
+    findHistoryTime("IMAGES_UPLOADED", "TRAINER_CONFIRMED") ||
+    otpConfirmedTime;
+
+  const hasAdminReviewedImages =
+    booking.imageReviewStatus === "REVIEWED" ||
+    booking.imageReviewStatus === "REJECTED" ||
+    history.some((item) => ["IMAGES_REVIEWED", "IMAGES_REJECTED"].includes(item.action)) ||
+    (booking.adminReviewStatus === "APPROVED" && hasUploadedImages);
+
+  const imagesReviewedTime =
+    booking.imageReviewedAt ||
+    findHistoryTime("IMAGES_REVIEWED", "IMAGES_REJECTED") ||
+    booking.adminReviewedAt ||
+    booking.updatedAt;
+
+  const hasAdminReviewedBooking =
+    booking.adminReviewStatus === "APPROVED" ||
+    booking.adminReviewStatus === "REJECTED" ||
+    history.some((item) => ["ADMIN_APPROVED", "ADMIN_REJECTED"].includes(item.action));
+
+  const adminReviewedTime =
+    booking.adminReviewedAt ||
+    findHistoryTime("ADMIN_APPROVED", "ADMIN_REJECTED") ||
+    booking.updatedAt;
+
+  const timeline: Array<{
+    id: string;
+    title: string;
+    iconStatus: string;
+    description: string;
+    performedAt: string;
+    actorType: string;
+  }> = [
+    {
+      id: `booked-${booking.id}`,
+      title: "Service Booked",
+      iconStatus: "created",
+      description: `Customer (${booking.customer.name}) booked ${booking.service?.name ?? "the wellness service"} (${booking.quantity} ${booking.quantity === 1 ? "session" : "sessions"}) and payment was confirmed.`,
+      performedAt: findHistoryTime("BOOKING_CREATED") || booking.createdAt,
+      actorType: "CUSTOMER",
+    },
+  ];
+
+  if (isTrainerConfirmed) {
+    timeline.push({
+      id: `trainer-reached-${booking.id}`,
+      title: "Trainer Reached",
+      iconStatus: "out_for_delivery",
+      description: `Assigned trainer (${booking.trainer.name}) reached the customer's service location and initiated OTP verification.`,
+      performedAt: trainerReachedTime,
+      actorType: "TRAINER",
+    });
+
+    timeline.push({
+      id: `otp-confirmed-${booking.id}`,
+      title: "OTP Confirmed",
+      iconStatus: "confirmed",
+      description: `Customer service OTP was entered by ${booking.trainer.name} and verified to confirm session delivery.`,
+      performedAt: otpConfirmedTime,
+      actorType: "TRAINER",
+    });
+  }
+
+  if (hasUploadedImages) {
+    const count = booking.sceneImages?.length || 1;
+    timeline.push({
+      id: `images-uploaded-${booking.id}`,
+      title: "Images Uploaded",
+      iconStatus: "processing",
+      description: `Trainer uploaded ${count} session scene ${count === 1 ? "photo" : "photos"} for verification.`,
+      performedAt: imagesUploadedTime,
+      actorType: "TRAINER",
+    });
+  }
+
+  if (hasAdminReviewedImages) {
+    const isRejected = booking.imageReviewStatus === "REJECTED";
+    const count = booking.sceneImages?.length || 0;
+    timeline.push({
+      id: `images-reviewed-${booking.id}`,
+      title: isRejected ? "Images Rejected by Admin" : "Admin Reviewed Images",
+      iconStatus: isRejected ? "cancelled" : "confirmed",
+      description: isRejected
+        ? `Admin reviewed and rejected the uploaded session photos${booking.imageRejectionReason ? `: ${booking.imageRejectionReason}` : "."}`
+        : `Admin reviewed ${count > 1 ? `all ${count} uploaded session photos` : "the uploaded session photos"} and verified the visual evidence.`,
+      performedAt: imagesReviewedTime,
+      actorType: "ADMIN",
+    });
+  }
+
+  if (hasAdminReviewedBooking) {
+    const isRejected = booking.adminReviewStatus === "REJECTED";
+    timeline.push({
+      id: `admin-approved-${booking.id}`,
+      title: isRejected ? "Booking Rejected by Admin" : "Admin Approved",
+      iconStatus: isRejected ? "cancelled" : "approved",
+      description: isRejected
+        ? `Booking rejected by admin${booking.adminRejectionReason ? `: ${booking.adminRejectionReason}` : "."}`
+        : "Admin verified the OTP confirmation and reviewed session images, approving the service booking.",
+      performedAt: adminReviewedTime,
+      actorType: "ADMIN",
+    });
+  }
+
+  if (booking.status === "COMPLETED" || booking.status === "CANCELLED") {
+    const isCancelled = booking.status === "CANCELLED";
+    timeline.push({
+      id: `final-status-${booking.id}`,
+      title: isCancelled ? "Booking Cancelled" : "Service Completed",
+      iconStatus: isCancelled ? "cancelled" : "completed",
+      description: isCancelled
+        ? "Service booking was cancelled."
+        : "All scheduled sessions, verifications, and reviews have been completed.",
+      performedAt: findHistoryTime("STATUS_CHANGED") || booking.updatedAt || booking.createdAt,
+      actorType: "ADMIN",
+    });
+  }
 
   const currentStatus = booking.status;
   const currentTimestamp = booking.updatedAt || booking.createdAt;
@@ -203,14 +336,14 @@ export function ServiceBookingPrintDocument({
             <div className="ref-card-header">
               <span>Booking Action History</span>
               <span className="text-[10px] font-normal lowercase tracking-normal text-slate-500">
-                {timeline.length} {timeline.length === 1 ? "entry" : "entries"}
+                {timeline.length} {timeline.length === 1 ? "event" : "events"}
               </span>
             </div>
             <div className="ref-card-body">
               <div className="ref-timeline">
                 {timeline.map((event, index) => {
-                  const isLatest = index === 0;
                   const isLast = index === timeline.length - 1;
+                  const isLatest = isLast;
                   return (
                     <div
                       className={`ref-timeline-step ${isLatest ? "is-latest" : ""}`}
@@ -218,12 +351,12 @@ export function ServiceBookingPrintDocument({
                     >
                       <div className="ref-timeline-indicator">
                         <div className="ref-timeline-dot">
-                          <StatusIcon service size={14} status={event.action} />
+                          <StatusIcon service size={14} status={event.iconStatus} />
                         </div>
                         {!isLast && <div className="ref-timeline-line" />}
                       </div>
                       <div className="ref-timeline-info">
-                        <div className="ref-timeline-status">{statusLabel(event.action)}</div>
+                        <div className="ref-timeline-status">{event.title}</div>
                         <div className="ref-timeline-desc">{event.description}</div>
                         <div className="ref-timeline-date">
                           {statusDate(event.performedAt)}

@@ -10,7 +10,9 @@ async function bootstrap() {
   const port = config.getOrThrow<number>('port');
   const corsOrigin = config.getOrThrow<string>('corsOrigin');
 
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['health'],
+  });
   app.enableCors({
     origin: corsOrigin.split(',').map((origin) => origin.trim()),
   });
@@ -34,7 +36,7 @@ async function bootstrap() {
     SwaggerModule.createDocument(app, swaggerConfig),
   );
 
-  await app.listen(port);
-  console.log(`Yoga API listening on http://localhost:${port}/api/v1`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Yoga API listening on http://0.0.0.0:${port}/api/v1`);
 }
 await bootstrap();
