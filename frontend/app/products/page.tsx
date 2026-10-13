@@ -7,6 +7,8 @@ import { TestimonialsSection } from "@/components/features/home/testimonials-sec
 import { Container } from "@/components/ui/container";
 import { getPublicProducts } from "@/api/products.api";
 import { testimonials } from "@/data/mock/testimonials";
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Products | Sattva", description: "Explore yoga and meditation essentials from Sattva." };
 type ProductsPageProps = { searchParams: Promise<{ category?: string; tag?: string; sort?: string; page?: string }> };
 const PAGE_SIZE = 9;

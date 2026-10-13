@@ -17,6 +17,8 @@ import { getPublicProduct } from "@/api/products.api";
 
 type ProductDetailsPageProps = { params: Promise<{ slug: string }> };
 
+export const dynamic = "force-dynamic";
+
 export async function generateStaticParams() { return []; }
 
 export async function generateMetadata({ params }: ProductDetailsPageProps): Promise<Metadata> {

@@ -14,7 +14,7 @@ export function CartItem({ item, onDecrease, onIncrease, onQuantityChange, onRem
   const { formatPrice } = useCurrency();
   return (
     <article className="grid gap-5 border-b border-black/10 py-7 sm:grid-cols-[120px_1fr] lg:grid-cols-[120px_1fr_130px_130px] lg:items-center lg:gap-7">
-      <div className="relative aspect-square overflow-hidden bg-brand-light-gray"><Image alt={item.name} className="object-cover" fill sizes="120px" src={item.image} /><button aria-label={`Remove ${item.name} from cart`} className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center bg-white text-brand-purple shadow-sm transition-colors hover:bg-brand-purple hover:text-white lg:hidden" onClick={onRemove} type="button"><TrashIcon /></button></div>
+      <div className="relative aspect-square overflow-hidden bg-brand-light-gray"><Image alt={item.name} className="object-cover" fill sizes="120px" src={item.image || "/lotuslab/aboutus.png"} unoptimized /><button aria-label={`Remove ${item.name} from cart`} className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center bg-white text-brand-purple shadow-sm transition-colors hover:bg-brand-purple hover:text-white lg:hidden" onClick={onRemove} type="button"><TrashIcon /></button></div>
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-purple">{item.category}</p>
         <h2 className="mt-2 text-2xl">{item.name}</h2>
